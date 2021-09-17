@@ -4,6 +4,9 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"flag"
+	"github.com/EdgeNet-project/fed4fire/pkg/service"
+	"github.com/divan/gorilla-xmlrpc/xml"
+	"github.com/gorilla/rpc"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -30,12 +33,15 @@ func check(err error) {
 }
 
 var showHelp bool
+var serverAddr string
 var serverCertFile string
 var serverKeyFile string
 var trustedRootCerts arrayFlags
 
 func main() {
+	// TODO: usage
 	flag.BoolVar(&showHelp, "help", false, "show this message")
+	flag.StringVar(&serverAddr, "serverAddr", "localhost:9443", "")
 	flag.StringVar(&serverCertFile, "serverCert", "", "")
 	flag.StringVar(&serverKeyFile, "serverKey", "", "")
 	flag.Var(&trustedRootCerts, "trustedRootCert", "")
@@ -54,16 +60,24 @@ func main() {
 		caCertPool.AppendCertsFromPEM(caCert)
 	}
 
+	RPC := rpc.NewServer()
+	xmlrpcCodec := xml.NewCodec()
+	RPC.RegisterCodec(xmlrpcCodec, "text/xml")
+	err := RPC.RegisterService(new(service.Service), "")
+	check(err)
+
 	tlsConfig := &tls.Config{
 		ClientCAs:  caCertPool,
 		ClientAuth: tls.RequireAndVerifyClientCert,
 	}
 
 	server := &http.Server{
-		Addr:      ":9443",
+		Addr:      serverAddr,
+		Handler:   RPC,
 		TLSConfig: tlsConfig,
 	}
 
-	err := server.ListenAndServeTLS(serverCertFile, serverKeyFile)
+	log.Printf("listening on %s", serverAddr)
+	err = server.ListenAndServeTLS(serverCertFile, serverKeyFile)
 	check(err)
 }

@@ -7,10 +7,20 @@
 
 ```bash
 make -C self_signed/
-# In production:
-# -trustedRootCert trusted_roots/ilabt.imec.be.pem -trustedRootCert trusted_roots/wall2.pem
-go run main.go -serverCert self_signed/server.pem -serverKey self_signed/server.key -trustedRootCert self_signed/ca-client.pem
-curl --cacert self_signed/server.pem --cert self_signed/client.pem --key self_signed/client.key --verbose https://localhost:9443
+
+go run main.go \
+  -serverCert self_signed/server.pem \
+  -serverKey self_signed/server.key \
+  -trustedRootCert self_signed/ca-client.pem
+
+curl https://localhost:9443 \
+  --cacert self_signed/server.pem \
+  --cert self_signed/client.pem \
+  --key self_signed/client.key \
+  --verbose \
+  --request POST \
+  --header 'Content-Type: text/xml' \
+  --data '<methodCall><methodName>Service.GetVersion</methodName><params><param><value><string>User 1</string></value></param></params></methodCall>'
 ```
 
 ### Using jFed automated testing
