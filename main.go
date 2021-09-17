@@ -28,7 +28,7 @@ func main() {
 	}
 
 	// Append self-signed user authority root during dev.
-	caCert, _ := ioutil.ReadFile("self_signed/authority.pem")
+	caCert, _ := ioutil.ReadFile("self_signed/ca-client.pem")
 	caCertPool.AppendCertsFromPEM(caCert)
 
 	tlsConfig := &tls.Config{
