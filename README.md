@@ -31,6 +31,7 @@ curl https://localhost:9443 \
 curl -LO https://jfed.ilabt.imec.be/downloads/stable/jar/jfed_gui.tar.gz
 tar xvzf jfed_gui.tar.gz
 cd jfed_gui/
+# TODO: Download javafx (x86/arm64)
 java --module-path ~/Downloads/javafx-sdk-17.0.0.1/lib/ -cp "*:lib/*" \
   --add-modules=javafx.swing,javafx.graphics,javafx.fxml,javafx.media,javafx.web \
   be.iminds.ilabt.jfed.ui.javafx.scanner.ScannerLauncher
