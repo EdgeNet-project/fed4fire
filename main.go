@@ -3,10 +3,25 @@ package main
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"flag"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
+	"strings"
 )
+
+// https://stackoverflow.com/a/28323276
+type arrayFlags []string
+
+func (i *arrayFlags) String() string {
+	return strings.Join(*i, " ")
+}
+
+func (i *arrayFlags) Set(value string) error {
+	*i = append(*i, value)
+	return nil
+}
 
 func check(err error) {
 	if err != nil {
@@ -14,25 +29,33 @@ func check(err error) {
 	}
 }
 
+var showHelp bool
+var serverCertFile string
+var serverKeyFile string
+var trustedRootCerts arrayFlags
+
 func main() {
-	caCertPool := x509.NewCertPool()
+	flag.BoolVar(&showHelp, "help", false, "show this message")
+	flag.StringVar(&serverCertFile, "serverCert", "", "")
+	flag.StringVar(&serverKeyFile, "serverKey", "", "")
+	flag.Var(&trustedRootCerts, "trustedRootCert", "")
+	flag.Parse()
 
-	files, err := ioutil.ReadDir("trusted_roots")
-	check(err)
-
-	for _, file := range files {
-		if !file.IsDir() {
-			caCert, _ := ioutil.ReadFile(file.Name())
-			caCertPool.AppendCertsFromPEM(caCert)
-		}
+	if showHelp {
+		flag.PrintDefaults()
+		os.Exit(0)
 	}
 
-	// Append self-signed user authority root during dev.
-	caCert, _ := ioutil.ReadFile("self_signed/ca-client.pem")
-	caCertPool.AppendCertsFromPEM(caCert)
+	caCertPool := x509.NewCertPool()
+	for _, file := range trustedRootCerts {
+		log.Printf("loading trusted certificate %s", file)
+		caCert, err := ioutil.ReadFile(file)
+		check(err)
+		caCertPool.AppendCertsFromPEM(caCert)
+	}
 
 	tlsConfig := &tls.Config{
-		ClientCAs: caCertPool,
+		ClientCAs:  caCertPool,
 		ClientAuth: tls.RequireAndVerifyClientCert,
 	}
 
@@ -41,6 +64,6 @@ func main() {
 		TLSConfig: tlsConfig,
 	}
 
-	err = server.ListenAndServeTLS("self_signed/server.pem", "self_signed/server.key")
+	err := server.ListenAndServeTLS(serverCertFile, serverKeyFile)
 	check(err)
 }

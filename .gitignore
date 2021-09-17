@@ -21,6 +21,7 @@ vendor/
 
 # Ignore OS X metadata files
 ._*
+.DS_Store
 
 # IDEA
 .idea/

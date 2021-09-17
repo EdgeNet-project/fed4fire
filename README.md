@@ -1,15 +1,32 @@
 # fed4fire
 
-- ❗This repository in currently private during the design phase. We'll squash the commits and make it public at a later time.
+- ❗This repository is currently private during the design phase. We'll squash the commits and make it public at a later time.
 - `self_signed` contains self-signed certificates for use during **development only**.
 
 ## Development
 
 ```bash
 make -C self_signed/
-go run main.go
+# In production:
+# -trustedRootCert trusted_roots/ilabt.imec.be.pem -trustedRootCert trusted_roots/wall2.pem
+go run main.go -serverCert self_signed/server.pem -serverKey self_signed/server.key -trustedRootCert self_signed/ca-client.pem
 curl --cacert self_signed/server.pem --cert self_signed/client.pem --key self_signed/client.key --verbose https://localhost:9443
 ```
+
+### Using jFed automated testing
+
+#### Add local AM using jFed scanner
+
+```bash
+curl -LO https://jfed.ilabt.imec.be/downloads/stable/jar/jfed_gui.tar.gz
+tar xvzf jfed_gui.tar.gz
+cd jfed_gui/
+java --module-path ~/Downloads/javafx-sdk-17.0.0.1/lib/ -cp "*:lib/*" \
+  --add-modules=javafx.swing,javafx.graphics,javafx.fxml,javafx.media,javafx.web \
+  be.iminds.ilabt.jfed.ui.javafx.scanner.ScannerLauncher
+```
+
+TODO...
 
 ## [AM API requirements](https://doc.fed4fire.eu/testbed_owner/addingtestbed.html#requirements)
 
