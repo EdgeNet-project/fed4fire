@@ -1,6 +1,9 @@
 # fed4fire
 
-❗This repository in currently private during the design phase. We'll squash the commits and make it public at a later time.
+- ❗This repository in currently private during the design phase. We'll squash the commits and make it public at a later time.
+- `self_signed` contains self-signed certificates for use during **development only**.
+  - `openssl req -x509 -newkey rsa:4096 -keyout authority.key -out authority.pem -days 365 -subj '/CN=localhost' -nodes `
+  - `openssl req -x509 -newkey rsa:4096 -keyout server.key -out server.pem -days 365 -subj '/CN=localhost' -nodes `
 
 # [AM API requirements](https://doc.fed4fire.eu/testbed_owner/addingtestbed.html#requirements)
 
