@@ -60,11 +60,19 @@ func main() {
 		caCertPool.AppendCertsFromPEM(caCert)
 	}
 
+	s := &service.Service{
+		AbsoluteURL: serverAddr,
+	}
+
 	RPC := rpc.NewServer()
 	xmlrpcCodec := xml.NewCodec()
 	RPC.RegisterCodec(xmlrpcCodec, "text/xml")
-	err := RPC.RegisterService(new(service.Service), "")
+	err := RPC.RegisterService(s, "")
 	check(err)
+
+	// https://github.com/divan/gorilla-xmlrpc/issues/14
+	// TODO: Custom codec that append service name instead?
+	xmlrpcCodec.RegisterAlias("GetVersion", "Service.GetVersion")
 
 	tlsConfig := &tls.Config{
 		ClientCAs:  caCertPool,

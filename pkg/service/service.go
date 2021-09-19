@@ -1,3 +1,5 @@
 package service
 
-type Service struct{}
+type Service struct{
+	AbsoluteURL string
+}
