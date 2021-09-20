@@ -9,6 +9,7 @@
 make -C self_signed/
 
 go run main.go \
+  -kubeconfig ~/.kube/config \
   -serverCert self_signed/server.pem \
   -serverKey self_signed/server.key \
   -trustedRootCert self_signed/ca-client.pem

@@ -6,6 +6,7 @@ import (
 	"flag"
 	"github.com/EdgeNet-project/fed4fire/pkg/service"
 	"github.com/divan/gorilla-xmlrpc/xml"
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/rpc"
 	"io/ioutil"
 	"log"
@@ -32,7 +33,12 @@ func check(err error) {
 	}
 }
 
+func logRequest(i *rpc.RequestInfo) {
+	log.Printf("%s", i.Method)
+}
+
 var showHelp bool
+var kubeconfigFile string
 var serverAddr string
 var serverCertFile string
 var serverKeyFile string
@@ -41,6 +47,7 @@ var trustedRootCerts arrayFlags
 func main() {
 	// TODO: usage
 	flag.BoolVar(&showHelp, "help", false, "show this message")
+	flag.StringVar(&kubeconfigFile, "kubeconfig", "", "")
 	flag.StringVar(&serverAddr, "serverAddr", "localhost:9443", "")
 	flag.StringVar(&serverCertFile, "serverCert", "", "")
 	flag.StringVar(&serverKeyFile, "serverKey", "", "")
@@ -61,27 +68,31 @@ func main() {
 	}
 
 	s := &service.Service{
-		AbsoluteURL: serverAddr,
+		AbsoluteURL:    serverAddr,
+		URN:            "urn:publicid:IDN+edge-net.org+authority+am",
+		KubeconfigFile: kubeconfigFile,
 	}
 
 	RPC := rpc.NewServer()
 	xmlrpcCodec := xml.NewCodec()
 	RPC.RegisterCodec(xmlrpcCodec, "text/xml")
+	RPC.RegisterBeforeFunc(logRequest)
 	err := RPC.RegisterService(s, "")
 	check(err)
 
 	// https://github.com/divan/gorilla-xmlrpc/issues/14
 	// TODO: Custom codec that append service name instead?
 	xmlrpcCodec.RegisterAlias("GetVersion", "Service.GetVersion")
+	xmlrpcCodec.RegisterAlias("ListResources", "Service.ListResources")
 
 	tlsConfig := &tls.Config{
-		ClientCAs:  caCertPool,
-		ClientAuth: tls.RequireAndVerifyClientCert,
+		ClientCAs: caCertPool,
+		//ClientAuth: tls.RequireAndVerifyClientCert,
 	}
 
 	server := &http.Server{
 		Addr:      serverAddr,
-		Handler:   RPC,
+		Handler:   handlers.LoggingHandler(os.Stdout, RPC),
 		TLSConfig: tlsConfig,
 	}
 
