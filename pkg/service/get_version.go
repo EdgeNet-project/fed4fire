@@ -41,7 +41,7 @@ type GetVersionReply struct {
 func (s *Service) GetVersion(r *http.Request, args *GetVersionArgs, reply *GetVersionReply) error {
 	reply.Data.API = 3
 	reply.Data.Code.Code = geniCodeSuccess
-	reply.Data.Value.URN = s.URN
+	reply.Data.Value.URN = s.URN("authority", "am")
 	reply.Data.Value.API = 3
 	reply.Data.Value.APIVersions.Three = s.AbsoluteURL
 	reply.Data.Value.RequestRspecVersions = []RspecVersion{

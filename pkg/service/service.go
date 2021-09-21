@@ -1,11 +1,20 @@
 package service
 
-import "k8s.io/client-go/kubernetes"
+import (
+	"fmt"
+	"k8s.io/client-go/kubernetes"
+)
 
 type Service struct {
 	AbsoluteURL      string
-	URN              string
+	AuthorityName    string
 	KubernetesClient *kubernetes.Clientset
+}
+
+func (s Service) URN(type_ string, name string) string {
+	// https://groups.geni.net/geni/wiki/GeniApiIdentifiers
+	// The format of a GENI URN is: urn:publicid:IDN+<authority string>+<type>+<name>
+	return fmt.Sprintf("urn:publicid:IDN+%s+%s+%s", s.AuthorityName, type_, name)
 }
 
 type Code struct {
@@ -14,17 +23,16 @@ type Code struct {
 
 type Credential struct {
 	Type    string `xml:"geni_type"`
-	Version int    `xml:"geni_version"`
+	Version string `xml:"geni_version"`
 	Value   string `xml:"geni_value"`
 }
 
-// TODO: Handle compression.
 type Options struct {
 	Available    bool `xml:"geni_available"`
 	Compressed   bool `xml:"geni_compressed"`
 	RspecVersion struct {
-		Type    string
-		Version string
+		Type    string `xml:"type"`
+		Version string `xml:"version"`
 	} `xml:"geni_rspec_version"`
 }
 

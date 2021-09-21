@@ -2,6 +2,8 @@ module github.com/EdgeNet-project/fed4fire
 
 go 1.16
 
+replace github.com/maxmouchet/gorilla-xmlrpc => /Users/maxmouchet/Clones/github.com/maxmouchet/gorilla-xmlrpc
+
 require (
 	github.com/felixge/httpsnoop v1.0.2 // indirect
 	github.com/go-logr/logr v1.1.0 // indirect

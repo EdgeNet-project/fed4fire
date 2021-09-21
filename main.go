@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"flag"
+	"fmt"
 	"github.com/EdgeNet-project/fed4fire/pkg/service"
 	"github.com/EdgeNet-project/fed4fire/pkg/utils"
 	"github.com/gorilla/handlers"
@@ -28,6 +29,7 @@ func logRequest(i *rpc.RequestInfo) {
 }
 
 var showHelp bool
+var authorityName string
 var kubeconfigFile string
 var serverAddr string
 var serverCertFile string
@@ -36,6 +38,7 @@ var trustedRootCerts utils.ArrayFlags
 
 func main() {
 	flag.BoolVar(&showHelp, "help", false, "show this message")
+	flag.StringVar(&authorityName, "authorityName", "edge-net.org", "authority name to use in URNs")
 	flag.StringVar(&kubeconfigFile, "kubeconfig", "", "path to the kubeconfig file used to communicate with the Kubernetes API")
 	flag.StringVar(&serverAddr, "serverAddr", "localhost:9443", "host:port on which to listen")
 	flag.StringVar(&serverCertFile, "serverCert", "", "path to the server TLS certificate")
@@ -63,8 +66,8 @@ func main() {
 	check(err)
 
 	s := &service.Service{
-		AbsoluteURL:      serverAddr,
-		URN:              "urn:publicid:IDN+edge-net.org+authority+am",
+		AbsoluteURL:      fmt.Sprintf("https://%s", serverAddr),
+		AuthorityName:    authorityName,
 		KubernetesClient: clientset,
 	}
 
