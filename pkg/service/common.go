@@ -5,19 +5,18 @@ type Code struct {
 }
 
 type Credential struct {
-	Geni_type    string `xml:"geni_type"`
-	Geni_version int    `xml:"geni_version"`
-	Geni_value   string `xml:"geni_value"`
+	Type    string `xml:"geni_type"`
+	Version int    `xml:"geni_version"`
+	Value   string `xml:"geni_value"`
 }
 
 type Options struct {
-	// TODO: Fix lib to use tags.
-	//Available    bool         `xml:"geni_available"`
-	Geni_compressed    bool `xml:"geni_compressed"`
-	Geni_rspec_version struct {
+	Available    bool `xml:"geni_available"`
+	Cmpressed    bool `xml:"geni_compressed"`
+	RspecVersion struct {
 		Type    string
 		Version string
-	}
+	} `xml:"geni_rspec_version"`
 }
 
 const (

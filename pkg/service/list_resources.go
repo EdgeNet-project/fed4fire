@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"github.com/EdgeNet-project/fed4fire/pkg/rspec"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
 	"net/http"
 )
 
@@ -27,17 +25,7 @@ func (s *Service) ListResources(r *http.Request, args *ListResourcesArgs, reply 
 	fmt.Println(args)
 
 	// TODO: Proper error structs.
-	config, err := clientcmd.BuildConfigFromFlags("", s.KubeconfigFile)
-	if err != nil {
-		return err
-	}
-
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return err
-	}
-
-	nodes, err := clientset.CoreV1().Nodes().List(context.TODO(), v1.ListOptions{})
+	nodes, err := s.KubernetesClient.CoreV1().Nodes().List(context.TODO(), v1.ListOptions{})
 	if err != nil {
 		return err
 	}

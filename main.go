@@ -5,10 +5,12 @@ import (
 	"crypto/x509"
 	"flag"
 	"github.com/EdgeNet-project/fed4fire/pkg/service"
-	"github.com/divan/gorilla-xmlrpc/xml"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/rpc"
+	"github.com/maxmouchet/gorilla-xmlrpc/xml"
 	"io/ioutil"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 	"log"
 	"net/http"
 	"os"
@@ -67,23 +69,27 @@ func main() {
 		caCertPool.AppendCertsFromPEM(caCert)
 	}
 
+	config, err := clientcmd.BuildConfigFromFlags("", kubeconfigFile)
+	check(err)
+
+	clientset, err := kubernetes.NewForConfig(config)
+	check(err)
+
 	s := &service.Service{
 		AbsoluteURL:    serverAddr,
 		URN:            "urn:publicid:IDN+edge-net.org+authority+am",
-		KubeconfigFile: kubeconfigFile,
+		KubernetesClient: clientset,
 	}
 
 	RPC := rpc.NewServer()
 	xmlrpcCodec := xml.NewCodec()
+	xmlrpcCodec.SetPrefix("Service.")
 	RPC.RegisterCodec(xmlrpcCodec, "text/xml")
 	RPC.RegisterBeforeFunc(logRequest)
-	err := RPC.RegisterService(s, "")
+	err = RPC.RegisterService(s, "")
 	check(err)
 
-	// https://github.com/divan/gorilla-xmlrpc/issues/14
-	// TODO: Custom codec that append service name instead?
-	xmlrpcCodec.RegisterAlias("GetVersion", "Service.GetVersion")
-	xmlrpcCodec.RegisterAlias("ListResources", "Service.ListResources")
+	// TODO: Handle compression.
 
 	tlsConfig := &tls.Config{
 		ClientCAs: caCertPool,
