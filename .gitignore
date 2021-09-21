@@ -23,8 +23,6 @@ vendor/
 ._*
 .DS_Store
 
-# IDEA
 .idea/
-
-# Binary
+self_signed/
 fed4fire

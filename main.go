@@ -17,7 +17,6 @@ import (
 	"os"
 )
 
-
 func check(err error) {
 	if err != nil {
 		log.Fatal(err)
@@ -38,9 +37,9 @@ var trustedRootCerts utils.ArrayFlags
 func main() {
 	// TODO: usage
 	flag.BoolVar(&showHelp, "help", false, "show this message")
-	flag.StringVar(&kubeconfigFile, "kubeconfig", "", "")
-	flag.StringVar(&serverAddr, "serverAddr", "localhost:9443", "")
-	flag.StringVar(&serverCertFile, "serverCert", "", "")
+	flag.StringVar(&kubeconfigFile, "kubeconfig", "", "path to the kubeconfig file used to communicate with the Kubernetes API")
+	flag.StringVar(&serverAddr, "serverAddr", "localhost:9443", "host:port on which to listen")
+	flag.StringVar(&serverCertFile, "serverCert", "", "path to the TLS certificate to ")
 	flag.StringVar(&serverKeyFile, "serverKey", "", "")
 	flag.Var(&trustedRootCerts, "trustedRootCert", "")
 	flag.Parse()
@@ -65,8 +64,8 @@ func main() {
 	check(err)
 
 	s := &service.Service{
-		AbsoluteURL:    serverAddr,
-		URN:            "urn:publicid:IDN+edge-net.org+authority+am",
+		AbsoluteURL:      serverAddr,
+		URN:              "urn:publicid:IDN+edge-net.org+authority+am",
 		KubernetesClient: clientset,
 	}
 
