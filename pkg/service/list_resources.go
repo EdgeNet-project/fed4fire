@@ -23,8 +23,13 @@ type ListResourcesReply struct {
 }
 
 func (s *Service) ListResources(r *http.Request, args *ListResourcesArgs, reply *ListResourcesReply) error {
-	fmt.Println(args.Options)
-	// TODO: Proper error structs.
+	// TODO: Dedicated credentials module?
+	fmt.Println(args.Credentials[0].Validate())
+	//chain, err := args.Credentials[0].SFA().Credential.OwnerCertificate().Verify(x509.VerifyOptions{})
+	//fmt.Println(chain)
+	//fmt.Println(err)
+	//fmt.Println(args.Credentials[0].SFA())
+
 	nodes, err := s.KubernetesClient.CoreV1().Nodes().List(context.TODO(), v1.ListOptions{})
 	if err != nil {
 		return err
@@ -73,7 +78,6 @@ func (s *Service) ListResources(r *http.Request, args *ListResourcesArgs, reply 
 		}
 	}
 
-	reply.Data.Code.Code = geniCodeSuccess
 	xml_, err := xml.Marshal(v)
 	if err != nil {
 		return err
@@ -85,5 +89,6 @@ func (s *Service) ListResources(r *http.Request, args *ListResourcesArgs, reply 
 		reply.Data.Value = string(xml_)
 	}
 
+	reply.Data.Code.Code = geniCodeSuccess
 	return nil
 }

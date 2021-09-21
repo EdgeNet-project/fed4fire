@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/EdgeNet-project/fed4fire/pkg/service"
 	"github.com/EdgeNet-project/fed4fire/pkg/utils"
-	"github.com/gorilla/handlers"
 	"github.com/gorilla/rpc"
 	"github.com/maxmouchet/gorilla-xmlrpc/xml"
 	"io/ioutil"
@@ -25,7 +24,7 @@ func check(err error) {
 }
 
 func logRequest(i *rpc.RequestInfo) {
-	log.Printf("%s", i.Method)
+	log.Println(i.Request.Proto, i.Request.Method, i.Request.RequestURI, i.Method, i.Request.UserAgent())
 }
 
 var showHelp bool
@@ -86,11 +85,10 @@ func main() {
 
 	server := &http.Server{
 		Addr:      serverAddr,
-		Handler:   handlers.LoggingHandler(os.Stdout, RPC),
+		Handler:   RPC,
 		TLSConfig: tlsConfig,
 	}
 
 	log.Printf("listening on %s", serverAddr)
-	err = server.ListenAndServeTLS(serverCertFile, serverKeyFile)
-	check(err)
+	check(server.ListenAndServeTLS(serverCertFile, serverKeyFile))
 }

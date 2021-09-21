@@ -40,7 +40,6 @@ type GetVersionReply struct {
 
 func (s *Service) GetVersion(r *http.Request, args *GetVersionArgs, reply *GetVersionReply) error {
 	reply.Data.API = 3
-	reply.Data.Code.Code = geniCodeSuccess
 	reply.Data.Value.URN = s.URN("authority", "am")
 	reply.Data.Value.API = 3
 	reply.Data.Value.APIVersions.Three = s.AbsoluteURL
@@ -69,5 +68,6 @@ func (s *Service) GetVersion(r *http.Request, args *GetVersionArgs, reply *GetVe
 	}
 	reply.Data.Value.SingleAllocation = 0
 	reply.Data.Value.Allocate = "geni_many"
+	reply.Data.Code.Code = geniCodeSuccess
 	return nil
 }

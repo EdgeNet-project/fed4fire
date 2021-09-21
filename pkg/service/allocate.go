@@ -36,8 +36,6 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 		fmt.Println(err)
 	}
 	fmt.Println(v)
-	//fmt.Println(args.Rspec)
-	//fmt.Println(args.Options)
 
 	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -77,12 +75,6 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 	}
 	fmt.Println(result)
 
-	//reply.Data.Code.Code = geniCodeSuccess
-	//xml_, err := xml.Marshal(v)
-	//if err != nil {
-	//	fmt.Println(err)
-	//	return err
-	//}
-	//reply.Data.Value = string(xml_)
+	reply.Data.Code.Code = geniCodeSuccess
 	return nil
 }
