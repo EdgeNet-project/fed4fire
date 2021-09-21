@@ -30,7 +30,7 @@ func (s *Service) ListResources(r *http.Request, args *ListResourcesArgs, reply 
 		return err
 	}
 
-	v := rspec.Advertisement{
+	v := rspec.Rspec{
 		Type: "advertisement",
 	}
 

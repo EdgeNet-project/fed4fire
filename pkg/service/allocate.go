@@ -2,7 +2,10 @@ package service
 
 import (
 	"context"
+	"encoding/xml"
 	"fmt"
+	"github.com/EdgeNet-project/fed4fire/pkg/rspec"
+	"html"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,8 +28,16 @@ type AllocateReply struct {
 }
 
 func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateReply) error {
-	fmt.Println(args.Rspec)
-	fmt.Println(args.Options)
+	v := rspec.Rspec{}
+	a := []byte(html.UnescapeString(args.Rspec))
+	err := xml.Unmarshal(a, &v)
+	fmt.Println(string(a))
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(v)
+	//fmt.Println(args.Rspec)
+	//fmt.Println(args.Options)
 
 	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
