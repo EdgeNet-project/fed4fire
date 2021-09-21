@@ -35,13 +35,12 @@ var serverKeyFile string
 var trustedRootCerts utils.ArrayFlags
 
 func main() {
-	// TODO: usage
 	flag.BoolVar(&showHelp, "help", false, "show this message")
 	flag.StringVar(&kubeconfigFile, "kubeconfig", "", "path to the kubeconfig file used to communicate with the Kubernetes API")
 	flag.StringVar(&serverAddr, "serverAddr", "localhost:9443", "host:port on which to listen")
-	flag.StringVar(&serverCertFile, "serverCert", "", "path to the TLS certificate to ")
-	flag.StringVar(&serverKeyFile, "serverKey", "", "")
-	flag.Var(&trustedRootCerts, "trustedRootCert", "")
+	flag.StringVar(&serverCertFile, "serverCert", "", "path to the server TLS certificate")
+	flag.StringVar(&serverKeyFile, "serverKey", "", "path to the server TLS key")
+	flag.Var(&trustedRootCerts, "trustedRootCert", "path to a trusted root certificate for authenticating user; can be specified multiple times")
 	flag.Parse()
 
 	if showHelp {
@@ -69,15 +68,13 @@ func main() {
 		KubernetesClient: clientset,
 	}
 
-	RPC := rpc.NewServer()
 	xmlrpcCodec := xml.NewCodec()
 	xmlrpcCodec.SetPrefix("Service.")
-	RPC.RegisterCodec(xmlrpcCodec, "text/xml")
-	RPC.RegisterBeforeFunc(logRequest)
-	err = RPC.RegisterService(s, "")
-	check(err)
 
-	// TODO: Handle compression.
+	RPC := rpc.NewServer()
+	RPC.RegisterBeforeFunc(logRequest)
+	RPC.RegisterCodec(xmlrpcCodec, "text/xml")
+	check(RPC.RegisterService(s, ""))
 
 	tlsConfig := &tls.Config{
 		ClientCAs: caCertPool,

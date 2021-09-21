@@ -18,6 +18,7 @@ type Credential struct {
 	Value   string `xml:"geni_value"`
 }
 
+// TODO: Handle compression.
 type Options struct {
 	Available    bool `xml:"geni_available"`
 	Compressed   bool `xml:"geni_compressed"`
