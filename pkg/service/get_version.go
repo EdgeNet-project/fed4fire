@@ -1,8 +1,6 @@
 package service
 
-import (
-	"net/http"
-)
+import "net/http"
 
 type APIVersions struct {
 	Three string `xml:"3"`
