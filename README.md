@@ -1,4 +1,4 @@
-# fed4fire
+# Fed4FIRE+ Aggregate Manager for EdgeNet
 
 - ❗This repository is currently private during the design phase. We'll squash the commits and make it public at a later time.
 - `self_signed` contains self-signed certificates for use during **development only**.
