@@ -1,9 +1,9 @@
 .PHONY: all
-all: client server
+all: client server trusted
 
 .PHONY: clean
 clean:
-	rm -f self_signed/*.{csr,key,pem}
+	rm -rf self_signed/ trusted_roots/
 
 .PHONY: client
 client:
@@ -32,3 +32,8 @@ server:
 	rm self_signed/server.csr
 	# Verify server certificate
 	openssl verify -CAfile self_signed/ca-server.pem self_signed/server.pem
+
+.PHONY: trusted
+trusted: trusted_roots/ilabt.imec.be.pem
+	mkdir -p trusted_roots/
+	curl -Lo trusted_roots/ilabt.imec.be.pem https://groups.geni.net/geni/raw-attachment/wiki/GeniTrustAnchors/ilabt.imec.be.pem

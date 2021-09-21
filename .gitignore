@@ -25,4 +25,5 @@ vendor/
 
 .idea/
 self_signed/
+trusted_roots/
 fed4fire
