@@ -1,7 +1,8 @@
-# fed4fire
+# Fed4FIRE+ Aggregate Manager for EdgeNet
 
-- ❗This repository is currently private during the design phase. We'll squash the commits and make it public at a later time.
-- `self_signed` contains self-signed certificates for use during **development only**.
+[![Go](https://github.com/EdgeNet-project/fed4fire/actions/workflows/go.yml/badge.svg)](https://github.com/EdgeNet-project/fed4fire/actions/workflows/go.yml)
+
+❗This repository is currently private during the design phase. We'll squash the commits and make it public at a later time.
 
 ## Development
 
