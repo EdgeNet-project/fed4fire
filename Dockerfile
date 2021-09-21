@@ -1,4 +1,4 @@
-FROM golang:1.16 as builder
+FROM golang:1.17.1 as builder
 WORKDIR /go/src/app
 ADD . /go/src/app
 RUN go get -d -v ./...
