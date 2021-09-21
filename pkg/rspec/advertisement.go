@@ -2,6 +2,7 @@ package rspec
 
 import "encoding/xml"
 
+// TODO: Refactor in rspec struct?
 type Advertisement struct {
 	XMLName xml.Name `xml:"rspec"`
 	Type    string   `xml:"type,attr"`

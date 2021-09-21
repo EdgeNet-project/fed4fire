@@ -71,7 +71,7 @@ func (s *Service) ListResources(r *http.Request, args *ListResourcesArgs, reply 
 		v.Nodes = append(v.Nodes, node_)
 	}
 
-	reply.Data.Code.Code = geni_code_success
+	reply.Data.Code.Code = geniCodeSuccess
 	xml_, err := xml.Marshal(v)
 	if err != nil {
 		fmt.Println(err)

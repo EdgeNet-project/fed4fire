@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"flag"
 	"github.com/EdgeNet-project/fed4fire/pkg/service"
+	"github.com/EdgeNet-project/fed4fire/pkg/utils"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/rpc"
 	"github.com/maxmouchet/gorilla-xmlrpc/xml"
@@ -14,20 +15,8 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strings"
 )
 
-// https://stackoverflow.com/a/28323276
-type arrayFlags []string
-
-func (i *arrayFlags) String() string {
-	return strings.Join(*i, " ")
-}
-
-func (i *arrayFlags) Set(value string) error {
-	*i = append(*i, value)
-	return nil
-}
 
 func check(err error) {
 	if err != nil {
@@ -44,7 +33,7 @@ var kubeconfigFile string
 var serverAddr string
 var serverCertFile string
 var serverKeyFile string
-var trustedRootCerts arrayFlags
+var trustedRootCerts utils.ArrayFlags
 
 func main() {
 	// TODO: usage
