@@ -7,7 +7,7 @@
 ## Development
 
 ```bash
-make -C self_signed/
+make
 
 go run main.go \
   -kubeconfig ~/.kube/config \
