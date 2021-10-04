@@ -45,7 +45,7 @@ var trustedRootCerts utils.ArrayFlags
 func main() {
 	klog.InitFlags(nil)
 	flag.BoolVar(&showHelp, "help", false, "show this message")
-	flag.StringVar(&authorityName, "authorityName", "edge-net.org", "authority name to use in URNs")
+	flag.StringVar(&authorityName, "authorityName", "", "authority name to use in URNs")
 	flag.Var(&containerImages, "containerImage", "name:image of a container image that can be deployed; can be specified multiple times")
 	flag.StringVar(&kubeconfigFile, "kubeconfig", "", "path to the kubeconfig file used to communicate with the Kubernetes API")
 	flag.BoolVar(&insecure, "insecure", false, "disable TLS client authentication")
