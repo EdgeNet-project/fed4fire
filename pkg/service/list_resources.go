@@ -39,6 +39,7 @@ func (s *Service) ListResources(r *http.Request, args *ListResourcesArgs, reply 
 
 	v := rspec.Rspec{Type: "advertisement"}
 	for _, node := range nodes.Items {
+		// TODO: Hide nodes behind a VPN.
 		node_ := rspecForNode(node, s.ContainerImages, s.URN)
 		if !(args.Options.Available && !node_.Available.Now) {
 			v.Nodes = append(v.Nodes, node_)

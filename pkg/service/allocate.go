@@ -101,45 +101,42 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 			ObjectMeta: metav1.ObjectMeta{
 				Name: node.ClientID,
 				Annotations: map[string]string{
-					fed4fireAnnotationSlice: args.SliceURN,
-					fed4fireAnnotationUser:  credential.TargetURN,
+					// TODO: Are multiple sliver types allowed?
+					// If not should we validate agains the schema before?
+					// TODO: Validate requested image name, and use default if not specified.
+					// TODO: Create vacuum job.
+					fed4fireExpiryTime: (time.Now().Add(86400 * time.Second)).String(),
+					fed4fireImageName:  "todo",
+					fed4fireSlice:      args.SliceURN,
+					fed4fireUser:       credential.TargetURN,
 				},
 			},
 			Spec: appsv1.DeploymentSpec{
 				Replicas: pointer.Int32Ptr(1),
 				Selector: &metav1.LabelSelector{
 					MatchLabels: map[string]string{
-						fed4fireAnnotationClientId: node.ClientID,
+						fed4fireClientId: node.ClientID,
 					},
 				},
 				Template: corev1.PodTemplateSpec{
 					ObjectMeta: metav1.ObjectMeta{
-						Annotations: map[string]string{
-							fed4fireAnnotationSlice: args.SliceURN,
-							fed4fireAnnotationUser:  credential.TargetURN,
-						},
 						Labels: map[string]string{
-							fed4fireAnnotationClientId: node.ClientID,
+							fed4fireClientId: node.ClientID,
 						},
 					},
 					Spec: corev1.PodSpec{
 						Containers: []corev1.Container{
 							{
-								Name: node.ClientID,
-								// TODO: Are multiple sliver types allowed?
-								// If not should we validate agains the schema before?
-								// TODO: Validate requested image name, and use default if not specified.
-								// TODO: Add expiration time annotation and run vacuum job.
-								Image: "k8s.gcr.io/pause:latest",
-								// TODO: Port?
+								Name:  node.ClientID,
+								Image: defaultPauseImage,
 								Resources: corev1.ResourceRequirements{
 									Limits: map[corev1.ResourceName]resource.Quantity{
 										corev1.ResourceCPU:    resource.MustParse(s.ContainerCpuLimit),
 										corev1.ResourceMemory: resource.MustParse(s.ContainerMemoryLimit),
 									},
 									Requests: map[corev1.ResourceName]resource.Quantity{
-										corev1.ResourceCPU:    resource.MustParse("0.01"),
-										corev1.ResourceMemory: resource.MustParse("16Mi"),
+										corev1.ResourceCPU:    resource.MustParse(defaultCpuRequest),
+										corev1.ResourceMemory: resource.MustParse(defaultMemoryRequest),
 									},
 								},
 							},

@@ -100,6 +100,20 @@ type Options struct {
 }
 
 const (
+	defaultCpuRequest    = "0.01"
+	defaultMemoryRequest = "16Mi"
+	defaultPauseImage    = "k8s.gcr.io/pause:latest"
+)
+
+const (
+	fed4fireClientId   = "fed4fire.eu/client-id"
+	fed4fireExpiryTime = "fed4fire.eu/expiry-time"
+	fed4fireImageName  = "fed4fire.eu/image-name"
+	fed4fireSlice      = "fed4fire.eu/slice"
+	fed4fireUser       = "fed4fire.eu/user"
+)
+
+const (
 	geniCodeSuccess               = 0
 	geniCodeBadargs               = 1
 	geniCodeError                 = 2
@@ -122,11 +136,10 @@ const (
 	geniCodeInsufficientBandwidth = 25
 )
 
-const geniAllocateMany = "geny_many"
-const geniCredentialTypeSfa = "geny_sfa"
+const (
+	geniAllocateMany = "geny_many"
+)
 
 const (
-	fed4fireAnnotationClientId = "fed4fire.eu/client-id"
-	fed4fireAnnotationSlice    = "fed4fire.eu/slice"
-	fed4fireAnnotationUser     = "fed4fire.eu/user"
+	geniCredentialTypeSfa = "geny_sfa"
 )
