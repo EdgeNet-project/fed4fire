@@ -33,13 +33,13 @@ func (s *Service) ListResources(r *http.Request, args *ListResourcesArgs, reply 
 	if err != nil {
 		reply.Data.Value = "Failed to list nodes"
 		reply.Data.Code.Code = geniCodeError
-		klog.ErrorS(err, reply.Data.Value)
+		klog.ErrorS(err, reply.Data.Value, "request", utils.RequestId(r))
 		return nil
 	}
 
 	v := rspec.Rspec{Type: "advertisement"}
 	for _, node := range nodes.Items {
-		node_ := rspecForNode(node, s.URN)
+		node_ := rspecForNode(node, s.ContainerImages, s.URN)
 		if !(args.Options.Available && !node_.Available.Now) {
 			v.Nodes = append(v.Nodes, node_)
 		}
@@ -49,7 +49,7 @@ func (s *Service) ListResources(r *http.Request, args *ListResourcesArgs, reply 
 	if err != nil {
 		reply.Data.Value = "Failed to serialize response"
 		reply.Data.Code.Code = geniCodeError
-		klog.ErrorS(err, reply.Data.Value)
+		klog.ErrorS(err, reply.Data.Value, "request", utils.RequestId(r))
 		return nil
 	}
 
@@ -64,7 +64,7 @@ func (s *Service) ListResources(r *http.Request, args *ListResourcesArgs, reply 
 }
 
 // rspecForNode converts a Kubernetes node to an RSpec node.
-func rspecForNode(node corev1.Node, urnFunc func (resourceType string, resourceName string) string) rspec.Node {
+func rspecForNode(node corev1.Node, containerImages map[string]string, urn func(resourceType string, resourceName string) string) rspec.Node {
 	nodeArch := node.Labels["kubernetes.io/arch"]
 	nodeCountry := node.Labels["edge-net.io/country-iso"]
 	nodeLatitude := node.Labels["edge-net.io/lat"][1:]
@@ -77,9 +77,15 @@ func rspecForNode(node corev1.Node, urnFunc func (resourceType string, resourceN
 			break
 		}
 	}
+	diskImages := make([]rspec.DiskImage, 0)
+	for name := range containerImages {
+		diskImages = append(diskImages, rspec.DiskImage{
+			Name: urn("image", name),
+		})
+	}
 	return rspec.Node{
-		ComponentID:        urnFunc("node", nodeName),
-		ComponentManagerID: urnFunc("authority", "am"),
+		ComponentID:        urn("node", nodeName),
+		ComponentManagerID: urn("authority", "am"),
 		ComponentName:      nodeName,
 		Available:          rspec.Available{Now: nodeIsReady},
 		Location: rspec.Location{
@@ -92,10 +98,8 @@ func rspecForNode(node corev1.Node, urnFunc func (resourceType string, resourceN
 		},
 		SliverTypes: []rspec.SliverType{
 			{
-				Name: "container",
-				DiskImages: []rspec.DiskImage{
-					{Name: urnFunc("image", "ubuntu2004")},
-				},
+				Name:       "container",
+				DiskImages: diskImages,
 			},
 		},
 	}

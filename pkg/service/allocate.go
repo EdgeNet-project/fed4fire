@@ -7,6 +7,7 @@ import (
 	"github.com/EdgeNet-project/edgenet/pkg/apis/core/v1alpha"
 	"github.com/EdgeNet-project/fed4fire/pkg/rspec"
 	"github.com/EdgeNet-project/fed4fire/pkg/urn"
+	"github.com/EdgeNet-project/fed4fire/pkg/utils"
 	"html"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -42,32 +43,31 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 	v := rspec.Rspec{}
 	a := []byte(html.UnescapeString(args.Rspec))
 	err := xml.Unmarshal(a, &v)
-	fmt.Println(string(a))
 	if err != nil {
 		fmt.Println(err)
 	}
-	fmt.Println(v)
-	fmt.Println(v.Nodes[0])
+	//fmt.Println(v)
+	//fmt.Println(v.Nodes[0])
 
 	// 1. Create a subnamespace for the slice
 	sliceIdentifier, err := urn.Parse(args.SliceURN)
 	if err != nil {
-		klog.ErrorS(err, "Failed to parse slice URN", "urn", args.SliceURN)
-		reply.Data.Code.Code = geniCodeError
 		reply.Data.Value = "Failed to parse slice URN"
+		reply.Data.Code.Code = geniCodeError
+		klog.ErrorS(err, reply.Data.Value, "urn", args.SliceURN, "request", utils.RequestId(r))
 		return nil
 	}
 	subnamespaceName, err := subnamespaceNameFor(*sliceIdentifier)
 	if err != nil {
-		klog.ErrorS(err, "Failed to build subnamespace name", "identifier", sliceIdentifier)
-		reply.Data.Code.Code = geniCodeError
 		reply.Data.Value = "Failed to build subnamespace name"
+		reply.Data.Code.Code = geniCodeError
+		klog.ErrorS(err, reply.Data.Value, "identifier", sliceIdentifier, "request", utils.RequestId(r))
 		return nil
 	}
-	subnamespace, err := s.EdgenetClient.CoreV1alpha().SubNamespaces("lip6-lab-fed4fire-dev").Get(context.TODO(), *subnamespaceName, metav1.GetOptions{})
+	subnamespace, err := s.EdgenetClient.CoreV1alpha().SubNamespaces(s.ParentNamespace).Get(context.TODO(), *subnamespaceName, metav1.GetOptions{})
 	if err != nil {
 		klog.InfoS(
-			"Could not find subnamespace", "subnamespace", *subnamespaceName,
+			"Could not find subnamespace", "subnamespace", *subnamespaceName, "request", utils.RequestId(r),
 		)
 		subnamespace = &v1alpha.SubNamespace{
 			ObjectMeta: metav1.ObjectMeta{
@@ -87,13 +87,13 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 				},
 			},
 		}
-		_, err = s.EdgenetClient.CoreV1alpha().SubNamespaces("lip6-lab-fed4fire-dev").Create(context.TODO(), subnamespace, metav1.CreateOptions{})
+		_, err = s.EdgenetClient.CoreV1alpha().SubNamespaces(s.ParentNamespace).Create(context.TODO(), subnamespace, metav1.CreateOptions{})
 		if err != nil {
-			klog.ErrorS(err, "Failed to create subnamespace", subnamespace, *subnamespace)
-			reply.Data.Code.Code = geniCodeError
 			reply.Data.Value = "Failed to create subnamespace"
+			reply.Data.Code.Code = geniCodeError
+			klog.ErrorS(err, reply.Data.Value, "subnamespace", *subnamespace, "request", utils.RequestId(r))
 		}
-		klog.InfoS("Created subnamespace", subnamespace, *subnamespaceName)
+		klog.InfoS("Created subnamespace", "subnamespace", *subnamespaceName, "request", utils.RequestId(r))
 	}
 
 	deployments := make([]appsv1.Deployment, 0)
@@ -122,8 +122,10 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 					Spec: corev1.PodSpec{
 						Containers: []corev1.Container{
 							{
-								Name:  node.ClientID,
-								Image: "docker.io/library/ubuntu:20.04",
+								Name: node.ClientID,
+								// TODO: Are multiple sliver types allowed?
+								// If not should we validate agains the schema before?
+								Image: s.ContainerImages[node.SliverTypes[0].DiskImages[0].Name],
 								// TODO: Port?
 								Resources: corev1.ResourceRequirements{
 									Limits: map[corev1.ResourceName]resource.Quantity{
@@ -143,23 +145,38 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 		})
 	}
 
-	deploymentsClient := s.KubernetesClient.AppsV1().Deployments("lip6-lab-fed4fire-dev")
+	deploymentsClient := s.KubernetesClient.AppsV1().Deployments(fmt.Sprintf("%s-%s", s.ParentNamespace, *subnamespaceName))
+	deployed := make([]appsv1.Deployment, 0)
+	success := true
 	for _, deployment := range deployments {
 		_, err := deploymentsClient.Create(context.TODO(), &deployment, metav1.CreateOptions{})
-		fmt.Println(err)
+		if err != nil {
+			klog.ErrorS(err, "Failed to create deployment", "deployment", deployment.Name, "request", utils.RequestId(r))
+			success = false
+			break
+		}
+		deployed = append(deployed, deployment)
 	}
-	//result, err := deploymentsClient.Create(context.TODO(), deployment, metav1.CreateOptions{})
-	//fmt.Println(err)
-	//if err != nil {
-	//	fmt.Println(err)
-	//	return err
-	//}
-	//fmt.Println(result)
+	if !success {
+		for _, deployment := range deployed {
+			klog.InfoS("Rolling back deployment", "deployment", deployment, "request", utils.RequestId(r))
+			err = deploymentsClient.Delete(context.TODO(), deployment.Name, metav1.DeleteOptions{})
+			if err != nil {
+				klog.InfoS("Failed to delete deployment", "deployment", deployment.Name, "request", utils.RequestId(r))
+			}
+		}
+		reply.Data.Value = "Failed to create deployment(s)"
+		reply.Data.Code.Code = geniCodeError
+		klog.ErrorS(err, reply.Data.Value, "request", utils.RequestId(r))
+		return nil
+	}
+
+	// TODO: Ignore already existing resources, and return slivers (only newly allocated ones).
+	// TODO: Implement expiration using labels?
 
 	reply.Data.Code.Code = geniCodeSuccess
 	return nil
 }
-
 
 func subnamespaceNameFor(identifier urn.Identifier) (*string, error) {
 	if identifier.ResourceType != "slice" {

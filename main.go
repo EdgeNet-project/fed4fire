@@ -26,6 +26,7 @@ func logRequest(i *rpc.RequestInfo) {
 		"uri", i.Request.RequestURI,
 		"rpc-method", i.Method,
 		"user-agent", i.Request.UserAgent(),
+		"request", utils.RequestId(i.Request),
 	)
 }
 
@@ -70,9 +71,17 @@ func main() {
 	kubeclient, err := kubernetes.NewForConfig(config)
 	utils.Check(err)
 
+	// TODO: Read from YAML file
+	containerImages := map[string]string{
+		"ubuntu2004": "docker.io/library/ubuntu:20.04",
+	}
+
 	s := &service.Service{
-		AbsoluteURL:      fmt.Sprintf("https://%s", serverAddr),
-		AuthorityName:    authorityName,
+		AbsoluteURL:     fmt.Sprintf("https://%s", serverAddr),
+		AuthorityName:   authorityName,
+		ContainerImages: containerImages,
+		// TODO: From flag.
+		ParentNamespace:  "lip6-lab-fed4fire-dev",
 		EdgenetClient:    edgeclient,
 		KubernetesClient: kubeclient,
 	}

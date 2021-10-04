@@ -17,6 +17,8 @@ import (
 type Service struct {
 	AbsoluteURL      string
 	AuthorityName    string
+	ContainerImages  map[string]string
+	ParentNamespace  string
 	EdgenetClient    *versioned.Clientset
 	KubernetesClient *kubernetes.Clientset
 }
@@ -118,5 +120,5 @@ const (
 
 const (
 	annotationSlice = "fed4fire.eu/slice"
-	annotationUser = "fed4fire.eu/user"
+	annotationUser  = "fed4fire.eu/user"
 )
