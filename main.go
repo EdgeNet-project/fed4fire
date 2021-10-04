@@ -27,13 +27,16 @@ func logRequest(i *rpc.RequestInfo) {
 		"uri", i.Request.RequestURI,
 		"rpc-method", i.Method,
 		"user-agent", i.Request.UserAgent(),
-		"request", utils.RequestId(i.Request),
 	)
 }
 
 var showHelp bool
 var authorityName string
 var containerImages utils.ArrayFlags
+var containerCpuLimit string
+var containerMemoryLimit string
+var namespaceCpuLimit string
+var namespaceMemoryLimit string
 var kubeconfigFile string
 var insecure bool
 var parentNamespace string
@@ -45,8 +48,12 @@ var trustedRootCerts utils.ArrayFlags
 func main() {
 	klog.InitFlags(nil)
 	flag.BoolVar(&showHelp, "help", false, "show this message")
-	flag.StringVar(&authorityName, "authorityName", "", "authority name to use in URNs")
+	flag.StringVar(&authorityName, "authorityName", "example.org", "authority name to use in URNs")
 	flag.Var(&containerImages, "containerImage", "name:image of a container image that can be deployed; can be specified multiple times")
+	flag.StringVar(&containerCpuLimit, "containerCpuLimit", "2", "maximum amount of CPU that can be used by a container")
+	flag.StringVar(&containerMemoryLimit, "containerMemoryLimit", "2Gi", "maximum amount of memory that can be used by a container")
+	flag.StringVar(&namespaceCpuLimit, "namespaceCpuLimit", "8", "maximum amount of CPU that can be used by a slice subnamespace")
+	flag.StringVar(&namespaceMemoryLimit, "namespaceMemoryLimit", "8Gi", "maximum amount of memory that can be used by a slice subnamespace")
 	flag.StringVar(&kubeconfigFile, "kubeconfig", "", "path to the kubeconfig file used to communicate with the Kubernetes API")
 	flag.BoolVar(&insecure, "insecure", false, "disable TLS client authentication")
 	flag.StringVar(&parentNamespace, "parentNamespace", "", "kubernetes namespaces in which to create slice subnamespaces")
@@ -85,12 +92,16 @@ func main() {
 	}
 
 	s := &service.Service{
-		AbsoluteURL:      fmt.Sprintf("https://%s", serverAddr),
-		AuthorityName:    authorityName,
-		ContainerImages:  containerImages_,
-		ParentNamespace:  parentNamespace,
-		EdgenetClient:    edgeclient,
-		KubernetesClient: kubeclient,
+		AbsoluteURL:          fmt.Sprintf("https://%s", serverAddr),
+		AuthorityName:        authorityName,
+		ContainerImages:      containerImages_,
+		ContainerCpuLimit:    containerCpuLimit,
+		ContainerMemoryLimit: containerMemoryLimit,
+		NamespaceCpuLimit:    namespaceCpuLimit,
+		NamespaceMemoryLimit: namespaceMemoryLimit,
+		ParentNamespace:      parentNamespace,
+		EdgenetClient:        edgeclient,
+		KubernetesClient:     kubeclient,
 	}
 
 	xmlrpcCodec := xml.NewCodec()

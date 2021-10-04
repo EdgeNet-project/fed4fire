@@ -10,7 +10,6 @@
 make
 
 go run main.go \
-  -authorityName edge-net.org \
   -containerImage ubuntu2004:docker.io/library/ubuntu:20.04 \
   -kubeconfig ~/.kube/config \
   -parentNamespace lip6-lab-fed4fire-dev \

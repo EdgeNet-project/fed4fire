@@ -7,7 +7,6 @@ import (
 	"github.com/EdgeNet-project/edgenet/pkg/apis/core/v1alpha"
 	"github.com/EdgeNet-project/fed4fire/pkg/rspec"
 	"github.com/EdgeNet-project/fed4fire/pkg/urn"
-	"github.com/EdgeNet-project/fed4fire/pkg/utils"
 	"html"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -54,32 +53,32 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 	if err != nil {
 		reply.Data.Value = "Failed to parse slice URN"
 		reply.Data.Code.Code = geniCodeError
-		klog.ErrorS(err, reply.Data.Value, "urn", args.SliceURN, "request", utils.RequestId(r))
+		klog.ErrorS(err, reply.Data.Value, "urn", args.SliceURN)
 		return nil
 	}
 	subnamespaceName, err := subnamespaceNameFor(*sliceIdentifier)
 	if err != nil {
 		reply.Data.Value = "Failed to build subnamespace name"
 		reply.Data.Code.Code = geniCodeError
-		klog.ErrorS(err, reply.Data.Value, "identifier", sliceIdentifier, "request", utils.RequestId(r))
+		klog.ErrorS(err, reply.Data.Value, "identifier", sliceIdentifier)
 		return nil
 	}
 	subnamespace, err := s.EdgenetClient.CoreV1alpha().SubNamespaces(s.ParentNamespace).Get(context.TODO(), *subnamespaceName, metav1.GetOptions{})
 	if err != nil {
 		klog.InfoS(
-			"Could not find subnamespace", "subnamespace", *subnamespaceName, "request", utils.RequestId(r),
+			"Could not find subnamespace", "subnamespace", *subnamespaceName,
 		)
 		subnamespace = &v1alpha.SubNamespace{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: *subnamespaceName,
 				Annotations: map[string]string{
-					annotationSlice: args.SliceURN,
+					fed4fireAnnotationSlice: args.SliceURN,
 				},
 			},
 			Spec: v1alpha.SubNamespaceSpec{
 				Resources: v1alpha.Resources{
-					CPU:    "8",
-					Memory: "8Gi",
+					CPU:    s.NamespaceCpuLimit,
+					Memory: s.NamespaceMemoryLimit,
 				},
 				Inheritance: v1alpha.Inheritance{
 					NetworkPolicy: true,
@@ -91,9 +90,9 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 		if err != nil {
 			reply.Data.Value = "Failed to create subnamespace"
 			reply.Data.Code.Code = geniCodeError
-			klog.ErrorS(err, reply.Data.Value, "subnamespace", *subnamespace, "request", utils.RequestId(r))
+			klog.ErrorS(err, reply.Data.Value, "subnamespace", *subnamespace)
 		}
-		klog.InfoS("Created subnamespace", "subnamespace", *subnamespaceName, "request", utils.RequestId(r))
+		klog.InfoS("Created subnamespace", "subnamespace", *subnamespaceName)
 	}
 
 	deployments := make([]appsv1.Deployment, 0)
@@ -102,21 +101,25 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 			ObjectMeta: metav1.ObjectMeta{
 				Name: node.ClientID,
 				Annotations: map[string]string{
-					annotationSlice: args.SliceURN,
-					annotationUser:  credential.TargetURN,
+					fed4fireAnnotationSlice: args.SliceURN,
+					fed4fireAnnotationUser:  credential.TargetURN,
 				},
 			},
 			Spec: appsv1.DeploymentSpec{
 				Replicas: pointer.Int32Ptr(1),
 				Selector: &metav1.LabelSelector{
 					MatchLabels: map[string]string{
-						"app": node.ClientID,
+						fed4fireAnnotationClientId: node.ClientID,
 					},
 				},
 				Template: corev1.PodTemplateSpec{
 					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{
+							fed4fireAnnotationSlice: args.SliceURN,
+							fed4fireAnnotationUser:  credential.TargetURN,
+						},
 						Labels: map[string]string{
-							"app": node.ClientID,
+							fed4fireAnnotationClientId: node.ClientID,
 						},
 					},
 					Spec: corev1.PodSpec{
@@ -125,16 +128,18 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 								Name: node.ClientID,
 								// TODO: Are multiple sliver types allowed?
 								// If not should we validate agains the schema before?
-								Image: s.ContainerImages[node.SliverTypes[0].DiskImages[0].Name],
+								// TODO: Validate requested image name, and use default if not specified.
+								// TODO: Add expiration time annotation and run vacuum job.
+								Image: "k8s.gcr.io/pause:latest",
 								// TODO: Port?
 								Resources: corev1.ResourceRequirements{
 									Limits: map[corev1.ResourceName]resource.Quantity{
-										corev1.ResourceCPU:    resource.MustParse("2"),
-										corev1.ResourceMemory: resource.MustParse("2Gi"),
+										corev1.ResourceCPU:    resource.MustParse(s.ContainerCpuLimit),
+										corev1.ResourceMemory: resource.MustParse(s.ContainerMemoryLimit),
 									},
 									Requests: map[corev1.ResourceName]resource.Quantity{
-										corev1.ResourceCPU:    resource.MustParse("0.1"),
-										corev1.ResourceMemory: resource.MustParse("128Mi"),
+										corev1.ResourceCPU:    resource.MustParse("0.01"),
+										corev1.ResourceMemory: resource.MustParse("16Mi"),
 									},
 								},
 							},
@@ -151,7 +156,7 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 	for _, deployment := range deployments {
 		_, err := deploymentsClient.Create(context.TODO(), &deployment, metav1.CreateOptions{})
 		if err != nil {
-			klog.ErrorS(err, "Failed to create deployment", "deployment", deployment.Name, "request", utils.RequestId(r))
+			klog.ErrorS(err, "Failed to create deployment", "deployment", deployment.Name)
 			success = false
 			break
 		}
@@ -159,15 +164,15 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 	}
 	if !success {
 		for _, deployment := range deployed {
-			klog.InfoS("Rolling back deployment", "deployment", deployment, "request", utils.RequestId(r))
+			klog.InfoS("Rolling back deployment", "deployment", deployment)
 			err = deploymentsClient.Delete(context.TODO(), deployment.Name, metav1.DeleteOptions{})
 			if err != nil {
-				klog.InfoS("Failed to delete deployment", "deployment", deployment.Name, "request", utils.RequestId(r))
+				klog.InfoS("Failed to delete deployment", "deployment", deployment.Name)
 			}
 		}
 		reply.Data.Value = "Failed to create deployment(s)"
 		reply.Data.Code.Code = geniCodeError
-		klog.ErrorS(err, reply.Data.Value, "request", utils.RequestId(r))
+		klog.ErrorS(err, reply.Data.Value)
 		return nil
 	}
 

@@ -15,12 +15,16 @@ import (
 )
 
 type Service struct {
-	AbsoluteURL      string
-	AuthorityName    string
-	ContainerImages  map[string]string
-	ParentNamespace  string
-	EdgenetClient    *versioned.Clientset
-	KubernetesClient *kubernetes.Clientset
+	AbsoluteURL          string
+	AuthorityName        string
+	ContainerImages      map[string]string
+	ContainerCpuLimit    string
+	ContainerMemoryLimit string
+	NamespaceCpuLimit    string
+	NamespaceMemoryLimit string
+	ParentNamespace      string
+	EdgenetClient        *versioned.Clientset
+	KubernetesClient     *kubernetes.Clientset
 }
 
 func (s Service) URN(resourceType string, resourceName string) string {
@@ -118,7 +122,11 @@ const (
 	geniCodeInsufficientBandwidth = 25
 )
 
+const geniAllocateMany = "geny_many"
+const geniCredentialTypeSfa = "geny_sfa"
+
 const (
-	annotationSlice = "fed4fire.eu/slice"
-	annotationUser  = "fed4fire.eu/user"
+	fed4fireAnnotationClientId = "fed4fire.eu/client-id"
+	fed4fireAnnotationSlice    = "fed4fire.eu/slice"
+	fed4fireAnnotationUser     = "fed4fire.eu/user"
 )

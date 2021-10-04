@@ -62,15 +62,14 @@ func (s *Service) GetVersion(r *http.Request, args *GetVersionArgs, reply *GetVe
 			Namespace: "http://www.geni.net/resources/rspec/3",
 		},
 	}
-	//// TODO: _enum_ for geni_sfa, geni_many...?
 	reply.Data.Value.CredentialTypes = []CredentialType{
 		{
-			Type:    "geni_sfa",
+			Type:    geniCredentialTypeSfa,
 			Version: "3",
 		},
 	}
 	reply.Data.Value.SingleAllocation = 0
-	reply.Data.Value.Allocate = "geni_many"
+	reply.Data.Value.Allocate = geniAllocateMany
 	reply.Data.Code.Code = geniCodeSuccess
 	return nil
 }

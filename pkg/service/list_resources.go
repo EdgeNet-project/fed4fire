@@ -33,7 +33,7 @@ func (s *Service) ListResources(r *http.Request, args *ListResourcesArgs, reply 
 	if err != nil {
 		reply.Data.Value = "Failed to list nodes"
 		reply.Data.Code.Code = geniCodeError
-		klog.ErrorS(err, reply.Data.Value, "request", utils.RequestId(r))
+		klog.ErrorS(err, reply.Data.Value)
 		return nil
 	}
 
@@ -49,7 +49,7 @@ func (s *Service) ListResources(r *http.Request, args *ListResourcesArgs, reply 
 	if err != nil {
 		reply.Data.Value = "Failed to serialize response"
 		reply.Data.Code.Code = geniCodeError
-		klog.ErrorS(err, reply.Data.Value, "request", utils.RequestId(r))
+		klog.ErrorS(err, reply.Data.Value)
 		return nil
 	}
 
