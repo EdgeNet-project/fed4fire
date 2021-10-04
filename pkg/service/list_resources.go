@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"github.com/EdgeNet-project/fed4fire/pkg/rspec"
 	"github.com/EdgeNet-project/fed4fire/pkg/utils"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/klog/v2"
 	"net/http"
 )
 
@@ -22,57 +24,22 @@ type ListResourcesReply struct {
 	}
 }
 
+// ListResources returns a listing and description of available resources at this aggregate.
+// The resource listing and description provides sufficient information for clients to select among available resources.
+// These listings are known as advertisement RSpecs.
+// https://groups.geni.net/geni/wiki/GAPI_AM_API_V3#ListResources
 func (s *Service) ListResources(r *http.Request, args *ListResourcesArgs, reply *ListResourcesReply) error {
-	// TODO: Dedicated credentials module?
-	fmt.Println(args.Credentials[0].Validate())
-	//chain, err := args.Credentials[0].SFA().Credential.OwnerCertificate().Verify(x509.VerifyOptions{})
-	//fmt.Println(chain)
-	//fmt.Println(err)
-	//fmt.Println(args.Credentials[0].SFA())
-
-	nodes, err := s.KubernetesClient.CoreV1().Nodes().List(context.TODO(), v1.ListOptions{})
+	nodes, err := s.KubernetesClient.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		return err
+		reply.Data.Value = "Failed to list nodes"
+		reply.Data.Code.Code = geniCodeError
+		klog.ErrorS(err, reply.Data.Value)
+		return nil
 	}
 
-	v := rspec.Rspec{
-		Type: "advertisement",
-	}
-
+	v := rspec.Rspec{Type: "advertisement"}
 	for _, node := range nodes.Items {
-		nodeArch := node.Labels["kubernetes.io/arch"]
-		nodeCountry := node.Labels["edge-net.io/country-iso"]
-		nodeLatitude := node.Labels["edge-net.io/lat"][1:]
-		nodeLongitude := node.Labels["edge-net.io/lon"][1:]
-		nodeName := node.Name
-		nodeIsReady := true
-		for _, condition := range node.Status.Conditions {
-			if condition.Type == "Ready" && condition.Status != "True" {
-				nodeIsReady = false
-			}
-		}
-		node_ := rspec.Node{
-			ComponentID:        s.URN("node", nodeName),
-			ComponentManagerID: s.URN("authority", "am"),
-			ComponentName:      nodeName,
-			Available:          rspec.Available{Now: nodeIsReady},
-			Location: rspec.Location{
-				Country:   nodeCountry,
-				Latitude:  nodeLatitude,
-				Longitude: nodeLongitude,
-			},
-			HardwareType: rspec.HardwareType{
-				Name: fmt.Sprintf("kubernetes-%s", nodeArch),
-			},
-			SliverTypes: []rspec.SliverType{
-				{
-					Name: "container",
-					DiskImages: []rspec.DiskImage{
-						{Name: s.URN("image", "ubuntu2004")},
-					},
-				},
-			},
-		}
+		node_ := rspecForNode(node, s.URN)
 		if !(args.Options.Available && !node_.Available.Now) {
 			v.Nodes = append(v.Nodes, node_)
 		}
@@ -80,7 +47,10 @@ func (s *Service) ListResources(r *http.Request, args *ListResourcesArgs, reply 
 
 	xml_, err := xml.Marshal(v)
 	if err != nil {
-		return err
+		reply.Data.Value = "Failed to serialize response"
+		reply.Data.Code.Code = geniCodeError
+		klog.ErrorS(err, reply.Data.Value)
+		return nil
 	}
 
 	if args.Options.Compressed {
@@ -91,4 +61,42 @@ func (s *Service) ListResources(r *http.Request, args *ListResourcesArgs, reply 
 
 	reply.Data.Code.Code = geniCodeSuccess
 	return nil
+}
+
+// rspecForNode converts a Kubernetes node to an RSpec node.
+func rspecForNode(node corev1.Node, urnFunc func (resourceType string, resourceName string) string) rspec.Node {
+	nodeArch := node.Labels["kubernetes.io/arch"]
+	nodeCountry := node.Labels["edge-net.io/country-iso"]
+	nodeLatitude := node.Labels["edge-net.io/lat"][1:]
+	nodeLongitude := node.Labels["edge-net.io/lon"][1:]
+	nodeName := node.Name
+	nodeIsReady := true
+	for _, condition := range node.Status.Conditions {
+		if condition.Type == "Ready" && condition.Status != "True" {
+			nodeIsReady = false
+			break
+		}
+	}
+	return rspec.Node{
+		ComponentID:        urnFunc("node", nodeName),
+		ComponentManagerID: urnFunc("authority", "am"),
+		ComponentName:      nodeName,
+		Available:          rspec.Available{Now: nodeIsReady},
+		Location: rspec.Location{
+			Country:   nodeCountry,
+			Latitude:  nodeLatitude,
+			Longitude: nodeLongitude,
+		},
+		HardwareType: rspec.HardwareType{
+			Name: fmt.Sprintf("kubernetes-%s", nodeArch),
+		},
+		SliverTypes: []rspec.SliverType{
+			{
+				Name: "container",
+				DiskImages: []rspec.DiskImage{
+					{Name: urnFunc("image", "ubuntu2004")},
+				},
+			},
+		},
+	}
 }

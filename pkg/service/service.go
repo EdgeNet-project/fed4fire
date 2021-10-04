@@ -1,26 +1,33 @@
 package service
 
 import (
-	"crypto/x509"
 	"encoding/xml"
 	"fmt"
+	"github.com/EdgeNet-project/edgenet/pkg/generated/clientset/versioned"
 	"github.com/EdgeNet-project/fed4fire/pkg/sfa"
-	"github.com/beevik/etree"
-	dsig "github.com/russellhaering/goxmldsig"
+	"github.com/EdgeNet-project/fed4fire/pkg/urn"
+	"github.com/EdgeNet-project/fed4fire/pkg/utils"
 	"html"
+	"io"
 	"k8s.io/client-go/kubernetes"
+	"log"
+	"os/exec"
 )
 
 type Service struct {
 	AbsoluteURL      string
 	AuthorityName    string
+	EdgenetClient    *versioned.Clientset
 	KubernetesClient *kubernetes.Clientset
 }
 
-func (s Service) URN(type_ string, name string) string {
-	// https://groups.geni.net/geni/wiki/GeniApiIdentifiers
-	// The format of a GENI URN is: urn:publicid:IDN+<authority string>+<type>+<name>
-	return fmt.Sprintf("urn:publicid:IDN+%s+%s+%s", s.AuthorityName, type_, name)
+func (s Service) URN(resourceType string, resourceName string) string {
+	identifier := urn.Identifier{
+		Authorities:  []string{s.AuthorityName},
+		ResourceType: resourceType,
+		ResourceName: resourceName,
+	}
+	return identifier.String()
 }
 
 type Code struct {
@@ -45,29 +52,36 @@ func (c Credential) SFA() sfa.SignedCredential {
 	return v
 }
 
+//func XmlSec1Verify
+//To validate a credential:
+//
+//Credentials must validate against the credential schema.
+//The credential signature must be valid, as per the ​XML Digital Signature standard.
+//All contained certificates must be valid and trusted (trace back through all valid/trusted certificates to a trusted root certificate), and follow the GENI Certificate restrictions (see GeniApiCertificates).
+//The expiration of the credential and all contained certificates must be later than the current time.
+//All contained URNs must follow the GENI URN rules.
+//The same rules apply to any parent credential, if the credential is delegated (and on up the delegation chain).
+//For non delegated credentials, or for the root credential of a delegated credential (all the way back up any delegation chain), the signer must have authority over the target. Specifically, the credential issuer must have a URN indicating it is of type authority, and it must be the toplevelauthority or a parent authority of the authority named in the credential's target URN. See the URN rules page for details about authorities.
+//For delegated credentials, the signer of the credential must be the subject (owner) of the parent credential), until you get to the root credential (no parent), in which case the above rule applies.
+
 func (c Credential) Validate() bool {
-	//xml_ := html.UnescapeString(c.Value)
-	//validator, err := signedxml.NewValidator(xml_)
-	//fmt.Println(err)
-	//xml1, err := validator.ValidateReferences()
-	//fmt.Println(xml1)
-	//fmt.Println(err)
-	doc := etree.NewDocument()
-	err := doc.ReadFromString(html.UnescapeString(c.Value))
+	// TODO: Accept path to PEMs
+	cmd := exec.Command("xmlsec1", "--verify",
+		"--trusted-pem", "/Users/maxmouchet/Clones/github.com/EdgeNet-project/fed4fire/trusted_roots/ilabt.imec.be.pem",
+		"-")
+	stdin, err := cmd.StdinPipe()
+	utils.Check(err)
+
+	io.WriteString(stdin, html.UnescapeString(c.Value))
+	stdin.Close()
+
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
-	ctx := dsig.NewDefaultValidationContext(&dsig.MemoryX509CertificateStore{
-		Roots: []*x509.Certificate{},
-	})
-	ctx.IdAttribute = "xml:id"
-	//TODO: Only use the returned validated element.
-	//a := doc.ChildElements()[0].ChildElements()[0]
-	a := doc.Root().ChildElements()[0]
-	fmt.Println(a)
-	_, err = ctx.Validate(a)
-	fmt.Println(err)
-	return false
+
+	fmt.Printf("%s\n", out)
+	return true
 }
 
 type Options struct {
@@ -100,4 +114,9 @@ const (
 	geniCodeAlreadyexists         = 17
 	geniCodeVlanUnavailable       = 24
 	geniCodeInsufficientBandwidth = 25
+)
+
+const (
+	annotationSlice = "fed4fire.eu/slice"
+	annotationUser = "fed4fire.eu/user"
 )

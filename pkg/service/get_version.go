@@ -38,6 +38,9 @@ type GetVersionReply struct {
 	}
 }
 
+// GetVersion returns static configuration information about this aggregate manager implementation,
+// such as API and RSpec versions supported.
+// https://groups.geni.net/geni/wiki/GAPI_AM_API_V3#GetVersion
 func (s *Service) GetVersion(r *http.Request, args *GetVersionArgs, reply *GetVersionReply) error {
 	reply.Data.API = 3
 	reply.Data.Value.URN = s.URN("authority", "am")

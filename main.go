@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"flag"
 	"fmt"
+	"github.com/EdgeNet-project/edgenet/pkg/generated/clientset/versioned"
 	"github.com/EdgeNet-project/fed4fire/pkg/service"
 	"github.com/EdgeNet-project/fed4fire/pkg/utils"
 	"github.com/gorilla/rpc"
@@ -12,19 +13,20 @@ import (
 	"io/ioutil"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
-	"log"
+	"k8s.io/klog/v2"
 	"net/http"
 	"os"
 )
 
-func check(err error) {
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
 func logRequest(i *rpc.RequestInfo) {
-	log.Println(i.Request.Proto, i.Request.Method, i.Request.RequestURI, i.Method, i.Request.UserAgent())
+	klog.InfoS(
+		"Received XML-RPC request",
+		"proto", i.Request.Proto,
+		"method", i.Request.Method,
+		"uri", i.Request.RequestURI,
+		"rpc-method", i.Method,
+		"user-agent", i.Request.UserAgent(),
+	)
 }
 
 var showHelp bool
@@ -36,6 +38,7 @@ var serverKeyFile string
 var trustedRootCerts utils.ArrayFlags
 
 func main() {
+	klog.InitFlags(nil)
 	flag.BoolVar(&showHelp, "help", false, "show this message")
 	flag.StringVar(&authorityName, "authorityName", "edge-net.org", "authority name to use in URNs")
 	flag.StringVar(&kubeconfigFile, "kubeconfig", "", "path to the kubeconfig file used to communicate with the Kubernetes API")
@@ -52,22 +55,26 @@ func main() {
 
 	caCertPool := x509.NewCertPool()
 	for _, file := range trustedRootCerts {
-		log.Printf("loading trusted certificate %s", file)
+		klog.InfoS("Loading trusted certificate", "file", file)
 		caCert, err := ioutil.ReadFile(file)
-		check(err)
+		utils.Check(err)
 		caCertPool.AppendCertsFromPEM(caCert)
 	}
 
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfigFile)
-	check(err)
+	utils.Check(err)
 
-	clientset, err := kubernetes.NewForConfig(config)
-	check(err)
+	edgeclient, err := versioned.NewForConfig(config)
+	utils.Check(err)
+
+	kubeclient, err := kubernetes.NewForConfig(config)
+	utils.Check(err)
 
 	s := &service.Service{
 		AbsoluteURL:      fmt.Sprintf("https://%s", serverAddr),
 		AuthorityName:    authorityName,
-		KubernetesClient: clientset,
+		EdgenetClient:    edgeclient,
+		KubernetesClient: kubeclient,
 	}
 
 	xmlrpcCodec := xml.NewCodec()
@@ -76,7 +83,7 @@ func main() {
 	RPC := rpc.NewServer()
 	RPC.RegisterBeforeFunc(logRequest)
 	RPC.RegisterCodec(xmlrpcCodec, "text/xml")
-	check(RPC.RegisterService(s, ""))
+	utils.Check(RPC.RegisterService(s, ""))
 
 	tlsConfig := &tls.Config{
 		ClientCAs: caCertPool,
@@ -89,6 +96,6 @@ func main() {
 		TLSConfig: tlsConfig,
 	}
 
-	log.Printf("listening on %s", serverAddr)
-	check(server.ListenAndServeTLS(serverCertFile, serverKeyFile))
+	klog.InfoS("Listening", "address", serverAddr)
+	utils.Check(server.ListenAndServeTLS(serverCertFile, serverKeyFile))
 }
