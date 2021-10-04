@@ -16,6 +16,7 @@ import (
 	"k8s.io/klog/v2"
 	"net/http"
 	"os"
+	"strings"
 )
 
 func logRequest(i *rpc.RequestInfo) {
@@ -32,7 +33,10 @@ func logRequest(i *rpc.RequestInfo) {
 
 var showHelp bool
 var authorityName string
+var containerImages utils.ArrayFlags
 var kubeconfigFile string
+var insecure bool
+var parentNamespace string
 var serverAddr string
 var serverCertFile string
 var serverKeyFile string
@@ -42,7 +46,10 @@ func main() {
 	klog.InitFlags(nil)
 	flag.BoolVar(&showHelp, "help", false, "show this message")
 	flag.StringVar(&authorityName, "authorityName", "edge-net.org", "authority name to use in URNs")
+	flag.Var(&containerImages, "containerImage", "name:image of a container image that can be deployed; can be specified multiple times")
 	flag.StringVar(&kubeconfigFile, "kubeconfig", "", "path to the kubeconfig file used to communicate with the Kubernetes API")
+	flag.BoolVar(&insecure, "insecure", false, "disable TLS client authentication")
+	flag.StringVar(&parentNamespace, "parentNamespace", "", "kubernetes namespaces in which to create slice subnamespaces")
 	flag.StringVar(&serverAddr, "serverAddr", "localhost:9443", "host:port on which to listen")
 	flag.StringVar(&serverCertFile, "serverCert", "", "path to the server TLS certificate")
 	flag.StringVar(&serverKeyFile, "serverKey", "", "path to the server TLS key")
@@ -56,10 +63,10 @@ func main() {
 
 	caCertPool := x509.NewCertPool()
 	for _, file := range trustedRootCerts {
-		klog.InfoS("Loading trusted certificate", "file", file)
 		caCert, err := ioutil.ReadFile(file)
 		utils.Check(err)
 		caCertPool.AppendCertsFromPEM(caCert)
+		klog.InfoS("Loaded trusted certificate", "file", file)
 	}
 
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfigFile)
@@ -71,17 +78,17 @@ func main() {
 	kubeclient, err := kubernetes.NewForConfig(config)
 	utils.Check(err)
 
-	// TODO: Read from YAML file
-	containerImages := map[string]string{
-		"ubuntu2004": "docker.io/library/ubuntu:20.04",
+	containerImages_ := make(map[string]string)
+	for _, s := range containerImages {
+		arr := strings.SplitN(s, ":", 2)
+		containerImages_[arr[0]] = arr[1]
 	}
 
 	s := &service.Service{
-		AbsoluteURL:     fmt.Sprintf("https://%s", serverAddr),
-		AuthorityName:   authorityName,
-		ContainerImages: containerImages,
-		// TODO: From flag.
-		ParentNamespace:  "lip6-lab-fed4fire-dev",
+		AbsoluteURL:      fmt.Sprintf("https://%s", serverAddr),
+		AuthorityName:    authorityName,
+		ContainerImages:  containerImages_,
+		ParentNamespace:  parentNamespace,
 		EdgenetClient:    edgeclient,
 		KubernetesClient: kubeclient,
 	}
@@ -95,8 +102,12 @@ func main() {
 	utils.Check(RPC.RegisterService(s, ""))
 
 	tlsConfig := &tls.Config{
-		ClientCAs: caCertPool,
-		//ClientAuth: tls.RequireAndVerifyClientCert,
+		ClientCAs:  caCertPool,
+		ClientAuth: tls.RequireAndVerifyClientCert,
+	}
+	if insecure {
+		tlsConfig.ClientAuth = tls.NoClientCert
+		klog.InfoS("Disabled TLS client authentication")
 	}
 
 	server := &http.Server{

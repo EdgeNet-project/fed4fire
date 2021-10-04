@@ -10,7 +10,9 @@
 make
 
 go run main.go \
+  -containerImage ubuntu2004:docker.io/library/ubuntu:20.04 \
   -kubeconfig ~/.kube/config \
+  -parentNamespace lip6-lab-fed4fire-dev \
   -serverCert self_signed/server.pem \
   -serverKey self_signed/server.key \
   -trustedRootCert self_signed/ca-client.pem
