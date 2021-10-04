@@ -16,6 +16,7 @@ import (
 	"k8s.io/utils/pointer"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type AllocateArgs struct {
@@ -72,7 +73,7 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 			ObjectMeta: metav1.ObjectMeta{
 				Name: *subnamespaceName,
 				Annotations: map[string]string{
-					fed4fireAnnotationSlice: args.SliceURN,
+					fed4fireSlice: args.SliceURN,
 				},
 			},
 			Spec: v1alpha.SubNamespaceSpec{
@@ -189,5 +190,6 @@ func subnamespaceNameFor(identifier urn.Identifier) (*string, error) {
 		strings.Join(identifier.Authorities, "-"),
 		identifier.ResourceName,
 	)
+	s = strings.ReplaceAll(s, ".", "-")
 	return &s, nil
 }
