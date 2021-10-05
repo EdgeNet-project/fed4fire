@@ -2,8 +2,9 @@ package service
 
 import (
 	"fmt"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"net/http"
+
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/EdgeNet-project/fed4fire/pkg/identifiers"
 

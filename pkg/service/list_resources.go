@@ -33,10 +33,7 @@ type ListResourcesOptions struct {
 	// This option is required, and aggregates are expected to return a geni_code of 1 (BADARGS) if it is missing.
 	// Aggregates should return a geni_code of 4 (BADVERSION) if the requested RSpec version
 	// is not one advertised as supported in GetVersion.
-	RspecVersion struct {
-		Type    string `xml:"type"`
-		Version string `xml:"version"`
-	} `xml:"geni_rspec_version"`
+	RspecVersion RspecVersion `xml:"geni_rspec_version"`
 }
 
 type ListResourcesArgs struct {
@@ -66,6 +63,10 @@ func (s *Service) ListResources(
 	args *ListResourcesArgs,
 	reply *ListResourcesReply,
 ) error {
+	if args.Options.RspecVersion.Type == "" {
+		reply.Data.Code.Code = geniCodeBadargs
+		return nil
+	}
 	if strings.ToLower(args.Options.RspecVersion.Type) != "geni" ||
 		args.Options.RspecVersion.Version != "3" {
 		reply.Data.Code.Code = geniCodeBadversion

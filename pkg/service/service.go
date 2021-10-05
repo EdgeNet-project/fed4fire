@@ -24,8 +24,8 @@ type Service struct {
 	NamespaceCpuLimit    string
 	NamespaceMemoryLimit string
 	ParentNamespace      string
-	EdgenetClient        *versioned.Clientset
-	KubernetesClient     *kubernetes.Clientset
+	EdgenetClient        versioned.Interface
+	KubernetesClient     kubernetes.Interface
 }
 
 type Code struct {
