@@ -141,6 +141,13 @@ const (
 	geniCodeInsufficientBandwidth = 25
 )
 
+// https://groups.geni.net/geni/wiki/GAPI_AM_API_V3/CommonConcepts#SliverAllocationStates
+const (
+	geniStateUnallocated = "geni_unallocated"
+	geniStateAllocated   = "geni_allocated"
+	geniStateProvisioned = "geni_provisioned"
+)
+
 const (
 	geniAllocateMany = "geny_many"
 )

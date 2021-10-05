@@ -21,6 +21,12 @@ import (
 	"k8s.io/utils/pointer"
 )
 
+type Sliver struct {
+	URN              string `xml:"geni_sliver_urn"`
+	Expires          string `xml:"geni_expires"`
+	AllocationStatus string `xml:"geni_allocation_status"`
+}
+
 type AllocateArgs struct {
 	SliceURN    string
 	Credentials []Credential
@@ -30,15 +36,19 @@ type AllocateArgs struct {
 
 type AllocateReply struct {
 	Data struct {
-		Code  Code   `xml:"code"`
-		Value string `xml:"value"`
+		Code  Code `xml:"code"`
+		Value struct {
+			Rspec   string   `xml:"geni_rspec"`
+			Slivers []Sliver `xml:"geni_slivers"`
+		} `xml:"value"`
 	}
 }
 
 func (v *AllocateReply) SetAndLogError(err error, msg string, keysAndValues ...interface{}) {
 	klog.ErrorS(err, msg, keysAndValues...)
 	v.Data.Code.Code = geniCodeError
-	v.Data.Value = fmt.Sprintf("%s: %s", msg, err)
+	// TODO
+	// v.Data.Value = fmt.Sprintf("%s: %s", msg, err)
 }
 
 // Allocate allocates resources as described in a request RSpec argument to a slice with the named URN.
@@ -136,7 +146,13 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 	}
 
 	// TODO: Ignore already existing resources, and return slivers (only newly allocated ones).
-	// TODO: Implement expiration using labels?
+	reply.Data.Value.Rspec = html.UnescapeString(args.Rspec)
+	// TODO: Proper values
+	reply.Data.Value.Slivers = append(reply.Data.Value.Slivers, Sliver{
+		URN:              "test",
+		Expires:          "test",
+		AllocationStatus: geniStateAllocated,
+	})
 
 	reply.Data.Code.Code = geniCodeSuccess
 	return nil
