@@ -3,9 +3,10 @@ package service
 import (
 	"context"
 	"encoding/xml"
-	"github.com/EdgeNet-project/fed4fire/pkg/utils"
 	"net/http"
 	"testing"
+
+	"github.com/EdgeNet-project/fed4fire/pkg/utils"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
