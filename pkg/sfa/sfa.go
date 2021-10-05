@@ -35,8 +35,6 @@ type Privilege struct {
 	CanDelegate bool     `xml:"can_delegate"`
 }
 
-//type
-
 func (c Credential) OwnerCertificate() *x509.Certificate {
 	block, _ := pem.Decode([]byte(c.OwnerGID))
 	if block == nil {

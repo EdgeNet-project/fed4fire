@@ -9,15 +9,15 @@ import (
 	"os/exec"
 
 	"github.com/EdgeNet-project/edgenet/pkg/generated/clientset/versioned"
+	"github.com/EdgeNet-project/fed4fire/pkg/identifiers"
 	"github.com/EdgeNet-project/fed4fire/pkg/sfa"
-	"github.com/EdgeNet-project/fed4fire/pkg/urn"
 	"github.com/EdgeNet-project/fed4fire/pkg/utils"
 	"k8s.io/client-go/kubernetes"
 )
 
 type Service struct {
 	AbsoluteURL          string
-	AuthorityName        string
+	AuthorityIdentifier  identifiers.Identifier
 	ContainerImages      map[string]string
 	ContainerCpuLimit    string
 	ContainerMemoryLimit string
@@ -28,16 +28,11 @@ type Service struct {
 	KubernetesClient     *kubernetes.Clientset
 }
 
-func (s Service) URN(resourceType string, resourceName string) string {
-	identifier := urn.Identifier{
-		Authorities:  []string{s.AuthorityName},
-		ResourceType: resourceType,
-		ResourceName: resourceName,
-	}
-	return identifier.String()
-}
-
 type Code struct {
+	// An integer supplying the GENI standard return code indicating the success or failure of this call.
+	// Error codes are standardized and defined in
+	// https://groups.geni.net/geni/attachment/wiki/GAPI_AM_API_V3/CommonConcepts/geni-error-codes.xml.
+	// Codes may be negative. A success return is defined as geni_code of 0.
 	Code int `xml:"geni_code"`
 }
 
@@ -45,6 +40,13 @@ type Credential struct {
 	Type    string `xml:"geni_type"`
 	Version string `xml:"geni_version"`
 	Value   string `xml:"geni_value"`
+}
+
+type Sliver struct {
+	URN              string `xml:"geni_sliver_urn"`
+	Expires          string `xml:"geni_expires"`
+	AllocationStatus string `xml:"geni_allocation_status"`
+	Error            string `xml:"geni_error"`
 }
 
 func (c Credential) SFA() sfa.SignedCredential {
@@ -96,8 +98,22 @@ func (c Credential) Validate() bool {
 }
 
 type Options struct {
-	Available    bool `xml:"geni_available"`
-	Compressed   bool `xml:"geni_compressed"`
+	// XML-RPC boolean value indicating whether the caller is interested in
+	// all resources or available resources.
+	// If this value is true (1), the result should contain only available resources.
+	// If this value is false (0) or unspecified, both available and allocated resources should be returned.
+	// The Aggregate Manager is free to limit visibility of certain resources based on the credentials parameter.
+	Available bool `xml:"geni_available"`
+	// XML-RPC boolean value indicating whether the caller would like the result to be compressed.
+	// If the value is true (1), the returned resource list will be compressed according to RFC 1950.
+	// If the value is false (0) or unspecified, the return will be text.
+	Compressed bool `xml:"geni_compressed"`
+	// XML-RPC struct indicating the type and version of Advertisement RSpec to return.
+	// The struct contains 2 members, type and version. type and version are case-insensitive strings,
+	// matching those in geni_ad_rspec_versions as returned by GetVersion at this aggregate.
+	// This option is required, and aggregates are expected to return a geni_code of 1 (BADARGS) if it is missing.
+	// Aggregates should return a geni_code of 4 (BADVERSION) if the requested RSpec version
+	// is not one advertised as supported in GetVersion.
 	RspecVersion struct {
 		Type    string `xml:"type"`
 		Version string `xml:"version"`
@@ -107,17 +123,17 @@ type Options struct {
 const (
 	defaultCpuRequest    = "0.01"
 	defaultMemoryRequest = "16Mi"
-	defaultPauseImage    = "k8s.gcr.io/pause:latest"
 )
 
 const (
 	fed4fireClientId   = "fed4fire.eu/client-id"
 	fed4fireExpiryTime = "fed4fire.eu/expiry-time"
-	fed4fireImage      = "fed4fire.eu/image"
 	fed4fireSlice      = "fed4fire.eu/slice"
+	fed4fireSliver     = "fed4fire.eu/sliver"
 	fed4fireUser       = "fed4fire.eu/user"
 )
 
+// https://groups.geni.net/geni/attachment/wiki/GAPI_AM_API_V3/CommonConcepts/geni-error-codes.xml
 const (
 	geniCodeSuccess               = 0
 	geniCodeBadargs               = 1
@@ -149,6 +165,15 @@ const (
 )
 
 const (
+	// Performing multiple Allocates without a delete is an error condition because the aggregate
+	// only supports a single sliver per slice or does not allow incrementally adding new slivers.
+	geniAllocateSingle = "geni_single"
+	// Additional calls to Allocate must be disjoint from slivers allocated with previous calls
+	// (no references or dependencies on existing slivers).
+	// The topologies must be disjoint in that there can be no connection or other reference
+	// from one topology to the other.
+	geniAllocateDisjoint = "geni_disjoint"
+	// Multiple slivers can exist and be incrementally added, including those which connect or overlap in some way.
 	geniAllocateMany = "geny_many"
 )
 

@@ -1,10 +1,12 @@
 package service
 
 import (
-	"context"
 	"encoding/xml"
 	"fmt"
 	"net/http"
+	"strings"
+
+	"github.com/EdgeNet-project/fed4fire/pkg/identifiers"
 
 	"github.com/EdgeNet-project/fed4fire/pkg/rspec"
 	"github.com/EdgeNet-project/fed4fire/pkg/utils"
@@ -25,6 +27,12 @@ type ListResourcesReply struct {
 	}
 }
 
+func (v *ListResourcesReply) SetAndLogError(err error, msg string, keysAndValues ...interface{}) {
+	klog.ErrorS(err, msg, keysAndValues...)
+	v.Data.Code.Code = geniCodeError
+	v.Data.Value = fmt.Sprintf("%s: %s", msg, err)
+}
+
 // ListResources returns a listing and description of available resources at this aggregate.
 // The resource listing and description provides sufficient information for clients to select among available resources.
 // These listings are known as advertisement RSpecs.
@@ -34,18 +42,20 @@ func (s *Service) ListResources(
 	args *ListResourcesArgs,
 	reply *ListResourcesReply,
 ) error {
-	nodes, err := s.KubernetesClient.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
+	if strings.ToLower(args.Options.RspecVersion.Type) != "geni" || args.Options.RspecVersion.Version != "3" {
+		reply.Data.Code.Code = geniCodeBadversion
+		return nil
+	}
+
+	nodes, err := s.KubernetesClient.CoreV1().Nodes().List(r.Context(), metav1.ListOptions{})
 	if err != nil {
-		reply.Data.Value = "Failed to list nodes"
-		reply.Data.Code.Code = geniCodeError
-		klog.ErrorS(err, reply.Data.Value)
+		reply.SetAndLogError(err, "Failed to list nodes")
 		return nil
 	}
 
 	v := rspec.Rspec{Type: "advertisement"}
 	for _, node := range nodes.Items {
-		// TODO: Hide nodes behind a VPN.
-		node_ := rspecForNode(node, s.ContainerImages, s.URN)
+		node_ := rspecForNode(node, s.AuthorityIdentifier, s.ContainerImages)
 		if !(args.Options.Available && !node_.Available.Now) {
 			v.Nodes = append(v.Nodes, node_)
 		}
@@ -53,9 +63,7 @@ func (s *Service) ListResources(
 
 	xml_, err := xml.Marshal(v)
 	if err != nil {
-		reply.Data.Value = "Failed to serialize response"
-		reply.Data.Code.Code = geniCodeError
-		klog.ErrorS(err, reply.Data.Value)
+		reply.SetAndLogError(err, "Failed to serialize response")
 		return nil
 	}
 
@@ -72,8 +80,8 @@ func (s *Service) ListResources(
 // rspecForNode converts a Kubernetes node to an RSpec node.
 func rspecForNode(
 	node corev1.Node,
+	authorityIdentifier identifiers.Identifier,
 	containerImages map[string]string,
-	urn func(resourceType string, resourceName string) string,
 ) rspec.Node {
 	nodeArch := node.Labels["kubernetes.io/arch"]
 	nodeCountry := node.Labels["edge-net.io/country-iso"]
@@ -90,12 +98,12 @@ func rspecForNode(
 	diskImages := make([]rspec.DiskImage, 0)
 	for name := range containerImages {
 		diskImages = append(diskImages, rspec.DiskImage{
-			Name: urn("image", name),
+			Name: authorityIdentifier.Copy("image", name).URN(),
 		})
 	}
 	return rspec.Node{
-		ComponentID:        urn("node", nodeName),
-		ComponentManagerID: urn("authority", "am"),
+		ComponentID:        authorityIdentifier.Copy("node", nodeName).URN(),
+		ComponentManagerID: authorityIdentifier.URN(),
 		ComponentName:      nodeName,
 		Available:          rspec.Available{Now: nodeIsReady},
 		Location: rspec.Location{

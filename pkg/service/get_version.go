@@ -26,14 +26,24 @@ type GetVersionReply struct {
 		API   int  `xml:"geni_api"`
 		Code  Code `xml:"code"`
 		Value struct {
-			URN                  string           `xml:"urn"`
-			API                  int              `xml:"geni_api"`
-			APIVersions          APIVersions      `xml:"geni_api_versions"`
-			RequestRspecVersions []RspecVersion   `xml:"geni_request_rspec_versions"`
-			AdRspecVersions      []RspecVersion   `xml:"geni_ad_rspec_versions"`
-			CredentialTypes      []CredentialType `xml:"geni_credential_types"`
-			SingleAllocation     int              `xml:"geni_single_allocation"`
-			Allocate             string           `xml:"geni_allocate"`
+			URN string `xml:"urn"`
+			// Current version of this API.
+			API int `xml:"geni_api"`
+			// List of versions of the API supported by this aggregate.
+			APIVersions APIVersions `xml:"geni_api_versions"`
+			// List of request RSpec formats supported by this aggregate.
+			RequestRspecVersions []RspecVersion `xml:"geni_request_rspec_versions"`
+			// List of advertisement RSpec formats supported by this aggregate.
+			AdRspecVersions []RspecVersion `xml:"geni_ad_rspec_versions"`
+			// List of supported credential types and versions.
+			CredentialTypes []CredentialType `xml:"geni_credential_types"`
+			// When true (not default), and performing one of (Describe, Allocate, Renew, Provision, Delete),
+			// such an AM requires you to include either the slice urn or the urn of all the slivers in the same state.
+			// If you attempt to run one of those operations on just some slivers in a given state,
+			// such an AM will return an error.
+			SingleAllocation int `xml:"geni_single_allocation"`
+			// Defines whether this AM allows adding slivers to slices at an AM.
+			Allocate string `xml:"geni_allocate"`
 		} `xml:"value"`
 	}
 }
@@ -43,7 +53,7 @@ type GetVersionReply struct {
 // https://groups.geni.net/geni/wiki/GAPI_AM_API_V3#GetVersion
 func (s *Service) GetVersion(r *http.Request, args *GetVersionArgs, reply *GetVersionReply) error {
 	reply.Data.API = 3
-	reply.Data.Value.URN = s.URN("authority", "am")
+	reply.Data.Value.URN = s.AuthorityIdentifier.URN()
 	reply.Data.Value.API = 3
 	reply.Data.Value.APIVersions.Three = s.AbsoluteURL
 	reply.Data.Value.RequestRspecVersions = []RspecVersion{

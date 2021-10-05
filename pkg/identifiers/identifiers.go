@@ -1,4 +1,4 @@
-package urn
+package identifiers
 
 import (
 	"fmt"
@@ -20,7 +20,17 @@ type Identifier struct {
 	ResourceName string
 }
 
-func (v Identifier) String() string {
+func (v Identifier) Copy(resourceType string, resourceName string) Identifier {
+	authorities := make([]string, len(v.Authorities))
+	copy(authorities, v.Authorities)
+	return Identifier{
+		Authorities:  authorities,
+		ResourceType: resourceType,
+		ResourceName: resourceName,
+	}
+}
+
+func (v Identifier) URN() string {
 	return fmt.Sprintf(
 		"urn:publicid:IDN+%s+%s+%s",
 		strings.Join(v.Authorities, ":"),

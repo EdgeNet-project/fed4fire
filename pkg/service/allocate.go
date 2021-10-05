@@ -8,11 +8,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/EdgeNet-project/fed4fire/pkg/utils"
+
 	"k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/EdgeNet-project/edgenet/pkg/apis/core/v1alpha"
+	"github.com/EdgeNet-project/fed4fire/pkg/identifiers"
 	"github.com/EdgeNet-project/fed4fire/pkg/rspec"
-	"github.com/EdgeNet-project/fed4fire/pkg/urn"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -20,12 +22,6 @@ import (
 	"k8s.io/klog/v2"
 	"k8s.io/utils/pointer"
 )
-
-type Sliver struct {
-	URN              string `xml:"geni_sliver_urn"`
-	Expires          string `xml:"geni_expires"`
-	AllocationStatus string `xml:"geni_allocation_status"`
-}
 
 type AllocateArgs struct {
 	SliceURN    string
@@ -58,16 +54,28 @@ func (v *AllocateReply) SetAndLogError(err error, msg string, keysAndValues ...i
 func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateReply) error {
 	credential := args.Credentials[0].SFA().Credential
 
-	v := rspec.Rspec{}
-	err := xml.Unmarshal([]byte(html.UnescapeString(args.Rspec)), &v)
+	sliceIdentifier, err := identifiers.Parse(args.SliceURN)
+	if err != nil {
+		reply.SetAndLogError(err, "Failed to parse slice URN")
+	}
+	userIdentifier, err := identifiers.Parse(credential.TargetURN)
+	if err != nil {
+		reply.SetAndLogError(err, "Failed to parse user URN")
+	}
+
+	requestRspec := rspec.Rspec{}
+	err = xml.Unmarshal([]byte(html.UnescapeString(args.Rspec)), &requestRspec)
 	if err != nil {
 		reply.SetAndLogError(err, "Failed to deserialize rspec")
 		return nil
 	}
 
+	// Q: How does a user choose a node?
+	// A: By specifying the component ID. We must check that the node truly exists beforehand.
+
 	// 1. Get or create the subnamespace for the slice
 	subnamespaceClient := s.EdgenetClient.CoreV1alpha().SubNamespaces(s.ParentNamespace)
-	subnamespaceName, err := subnamespaceNameForSlice(args.SliceURN)
+	subnamespaceName, err := subnamespaceNameForSlice(*sliceIdentifier)
 	if err != nil {
 		reply.SetAndLogError(
 			err,
@@ -83,7 +91,7 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 	if err != nil {
 		klog.InfoS("Could not find subnamespace", "name", subnamespaceName)
 		subnamespace, err = subnamespaceForSlice(
-			args.SliceURN,
+			*sliceIdentifier,
 			s.NamespaceCpuLimit,
 			s.NamespaceMemoryLimit,
 		)
@@ -100,12 +108,13 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 	}
 
 	// 2. Build the deployment objects
-	deployments := make([]appsv1.Deployment, 0)
-	for _, node := range v.Nodes {
+	deployments := make([]appsv1.Deployment, len(requestRspec.Nodes))
+	for i, node := range requestRspec.Nodes {
 		deployment, err := deploymentForRspec(
 			node,
-			args.SliceURN,
-			credential.TargetURN,
+			s.AuthorityIdentifier,
+			*sliceIdentifier,
+			*userIdentifier,
 			s.ContainerImages,
 			s.ContainerCpuLimit,
 			s.ContainerMemoryLimit,
@@ -114,73 +123,87 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 			reply.SetAndLogError(err, "Failed to build deployment")
 			return nil
 		}
-		deployments = append(deployments, *deployment)
+		deployments[i] = *deployment
 	}
 
 	// 3. Create the deployment objects and rollback them in case of failure
 	targetNamespace := fmt.Sprintf("%s-%s", s.ParentNamespace, subnamespaceName)
 	deploymentsClient := s.KubernetesClient.AppsV1().Deployments(targetNamespace)
-	deployed := make([]appsv1.Deployment, 0)
+	deployed := make([]bool, len(deployments))
 	success := true
-	for _, deployment := range deployments {
+	for i, deployment := range deployments {
 		_, err := deploymentsClient.Create(r.Context(), &deployment, metav1.CreateOptions{})
 		if errors.IsAlreadyExists(err) {
 			klog.InfoS("Ignoring already existing deployment", "name", deployment.Name)
+			deployed[i] = false
 		} else if err != nil {
 			reply.SetAndLogError(err, "Failed to create deployment", "name", deployment.Name)
+			deployed[i] = false
 			success = false
 			break
 		} else {
-			deployed = append(deployed, deployment)
+			deployed[i] = true
 		}
 	}
 	if !success {
-		for _, deployment := range deployed {
-			klog.InfoS("Rolling back deployment", "name", deployment)
-			err = deploymentsClient.Delete(r.Context(), deployment.Name, metav1.DeleteOptions{})
-			if err != nil {
-				klog.InfoS("Failed to rollback deployment", "name", deployment.Name)
+		for i, isDeployed := range deployed {
+			if isDeployed {
+				deployment := deployments[i]
+				klog.InfoS("Rolling back deployment", "name", deployment)
+				err = deploymentsClient.Delete(r.Context(), deployment.Name, metav1.DeleteOptions{})
+				if err != nil {
+					klog.InfoS("Failed to rollback deployment", "name", deployment.Name)
+				}
 			}
 		}
 		return nil
 	}
 
-	// TODO: Ignore already existing resources, and return slivers (only newly allocated ones).
-	reply.Data.Value.Rspec = html.UnescapeString(args.Rspec)
-	// TODO: Proper values
-	reply.Data.Value.Slivers = append(reply.Data.Value.Slivers, Sliver{
-		URN:              "test",
-		Expires:          "test",
-		AllocationStatus: geniStateAllocated,
-	})
+	// TODO: Specify the correct value for geni_allocate
+	// As described here, the geni_allocate return from GetVersion advertises when a client may legally call Allocate
+	// (only once at a time per slice, whenever desired, or multiple times only if the requested resources do not interact).
+	returnRspec := rspec.Rspec{Type: "request"}
+	for i, isDeployed := range deployed {
+		if isDeployed {
+			sliver := Sliver{
+				URN:              deployments[i].Annotations[fed4fireSliver],
+				Expires:          deployments[i].Annotations[fed4fireExpiryTime],
+				AllocationStatus: geniStateAllocated,
+			}
+			reply.Data.Value.Slivers = append(reply.Data.Value.Slivers, sliver)
+			returnRspec.Nodes = append(returnRspec.Nodes, requestRspec.Nodes[i])
+		}
+	}
 
+	xml_, err := xml.Marshal(returnRspec)
+	if err != nil {
+		reply.SetAndLogError(err, "Failed to serialize response")
+		return nil
+	}
+	reply.Data.Value.Rspec = string(xml_)
 	reply.Data.Code.Code = geniCodeSuccess
 	return nil
 }
 
-func subnamespaceNameForSlice(sliceUrn string) (string, error) {
-	sliceIdentifier, err := urn.Parse(sliceUrn)
-	if err != nil {
-		return "", err
-	}
-	if sliceIdentifier.ResourceType != "slice" {
+func subnamespaceNameForSlice(identifier identifiers.Identifier) (string, error) {
+	if identifier.ResourceType != "slice" {
 		return "", fmt.Errorf("URN resource type must be `slice`")
 	}
 	s := fmt.Sprintf(
 		"fed4fire-slice-%s-%s",
-		strings.Join(sliceIdentifier.Authorities, "-"),
-		sliceIdentifier.ResourceName,
+		strings.Join(identifier.Authorities, "-"),
+		identifier.ResourceName,
 	)
 	s = strings.ReplaceAll(s, ".", "-")
 	return s, nil
 }
 
 func subnamespaceForSlice(
-	sliceUrn string,
+	identifier identifiers.Identifier,
 	cpuLimit string,
 	memoryLimit string,
 ) (*v1alpha.SubNamespace, error) {
-	name, err := subnamespaceNameForSlice(sliceUrn)
+	name, err := subnamespaceNameForSlice(identifier)
 	if err != nil {
 		return nil, err
 	}
@@ -188,7 +211,7 @@ func subnamespaceForSlice(
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 			Annotations: map[string]string{
-				fed4fireSlice: sliceUrn,
+				fed4fireSlice: identifier.URN(),
 			},
 		},
 		Spec: v1alpha.SubNamespaceSpec{
@@ -210,12 +233,10 @@ func deploymentImageForSliverType(
 	containerImages map[string]string,
 ) (string, error) {
 	if len(sliverType.DiskImages) == 0 {
-		for _, image := range containerImages {
-			return image, nil
-		}
+		return utils.Keys(containerImages)[0], nil
 	}
 	if len(sliverType.DiskImages) == 1 {
-		identifier, err := urn.Parse(sliverType.DiskImages[0].Name)
+		identifier, err := identifiers.Parse(sliverType.DiskImages[0].Name)
 		if err != nil {
 			return "", err
 		}
@@ -230,12 +251,16 @@ func deploymentImageForSliverType(
 
 func deploymentForRspec(
 	node rspec.Node,
-	sliceUrn string,
-	userUrn string,
+	authorityIdentifier identifiers.Identifier,
+	sliceIdentifier identifiers.Identifier,
+	userIdentifier identifiers.Identifier,
 	containerImages map[string]string,
 	cpuLimit string,
 	memoryLimit string,
 ) (*appsv1.Deployment, error) {
+	if node.Exclusive {
+		return nil, fmt.Errorf("exclusive must be false")
+	}
 	if len(node.SliverTypes) != 1 {
 		return nil, fmt.Errorf("exactly one sliver type must be specified")
 	}
@@ -248,15 +273,23 @@ func deploymentForRspec(
 		return nil, err
 	}
 	clientId := strings.ToLower(node.ClientID)
+	sliverIdentifier := authorityIdentifier.Copy("sliver",
+		fmt.Sprintf(
+			"%s-%s-%s",
+			strings.Join(sliceIdentifier.Authorities, "-"),
+			sliceIdentifier.ResourceName,
+			clientId,
+		),
+	)
 	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: clientId,
 			Annotations: map[string]string{
 				// TODO: Create vacuum job.
 				fed4fireExpiryTime: (time.Now().Add(86400 * time.Second)).String(),
-				fed4fireImage:      image,
-				fed4fireSlice:      sliceUrn,
-				fed4fireUser:       userUrn,
+				fed4fireUser:       userIdentifier.URN(),
+				fed4fireSlice:      sliceIdentifier.URN(),
+				fed4fireSliver:     sliverIdentifier.URN(),
 			},
 		},
 		Spec: appsv1.DeploymentSpec{
@@ -276,7 +309,7 @@ func deploymentForRspec(
 					Containers: []corev1.Container{
 						{
 							Name:  clientId,
-							Image: defaultPauseImage,
+							Image: image,
 							Resources: corev1.ResourceRequirements{
 								Limits: map[corev1.ResourceName]resource.Quantity{
 									corev1.ResourceCPU:    resource.MustParse(cpuLimit),

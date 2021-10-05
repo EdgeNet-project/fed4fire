@@ -1,4 +1,4 @@
-package urn
+package identifiers
 
 import (
 	"reflect"
@@ -39,6 +39,54 @@ func TestMustParse(t *testing.T) {
 	}
 }
 
+func TestIdentifier_Copy(t *testing.T) {
+	type fields struct {
+		Authorities  []string
+		ResourceType string
+		ResourceName string
+	}
+	type args struct {
+		resourceType string
+		resourceName string
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   Identifier
+	}{
+		{
+			"basic1",
+			fields{
+				Authorities:  []string{"gcf", "gpo", "gpolab"},
+				ResourceType: "node",
+				ResourceName: "switch+1+port+2",
+			},
+			args{"authority", "test"},
+			Identifier{
+				Authorities:  []string{"gcf", "gpo", "gpolab"},
+				ResourceType: "authority",
+				ResourceName: "test",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			v := Identifier{
+				Authorities:  tt.fields.Authorities,
+				ResourceType: tt.fields.ResourceType,
+				ResourceName: tt.fields.ResourceName,
+			}
+			if got := v.Copy(tt.args.resourceType, tt.args.resourceName); !reflect.DeepEqual(
+				got,
+				tt.want,
+			) {
+				t.Errorf("Copy() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestIdentifier_String(t *testing.T) {
 	type fields struct {
 		Authorities  []string
@@ -67,8 +115,8 @@ func TestIdentifier_String(t *testing.T) {
 				ResourceType: tt.fields.ResourceType,
 				ResourceName: tt.fields.ResourceName,
 			}
-			if got := v.String(); got != tt.want {
-				t.Errorf("String() = %v, want %v", got, tt.want)
+			if got := v.URN(); got != tt.want {
+				t.Errorf("URN() = %v, want %v", got, tt.want)
 			}
 		})
 	}

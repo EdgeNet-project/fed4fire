@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/EdgeNet-project/edgenet/pkg/generated/clientset/versioned"
+	"github.com/EdgeNet-project/fed4fire/pkg/identifiers"
 	"github.com/EdgeNet-project/fed4fire/pkg/service"
 	"github.com/EdgeNet-project/fed4fire/pkg/utils"
 	"github.com/gorilla/rpc"
@@ -86,6 +87,12 @@ func main() {
 	kubeclient, err := kubernetes.NewForConfig(config)
 	utils.Check(err)
 
+	authorityIdentifier := identifiers.Identifier{
+		Authorities:  []string{authorityName},
+		ResourceType: "authority",
+		ResourceName: "am",
+	}
+
 	containerImages_ := make(map[string]string)
 	for _, s := range containerImages {
 		arr := strings.SplitN(s, ":", 2)
@@ -95,7 +102,7 @@ func main() {
 
 	s := &service.Service{
 		AbsoluteURL:          fmt.Sprintf("https://%s", serverAddr),
-		AuthorityName:        authorityName,
+		AuthorityIdentifier:  authorityIdentifier,
 		ContainerImages:      containerImages_,
 		ContainerCpuLimit:    containerCpuLimit,
 		ContainerMemoryLimit: containerMemoryLimit,
