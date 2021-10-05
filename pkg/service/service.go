@@ -135,32 +135,57 @@ const (
 
 // https://groups.geni.net/geni/attachment/wiki/GAPI_AM_API_V3/CommonConcepts/geni-error-codes.xml
 const (
-	geniCodeSuccess               = 0
-	geniCodeBadargs               = 1
-	geniCodeError                 = 2
-	geniCodeForbidden             = 3
-	geniCodeBadversion            = 4
-	geniCodeServerror             = 5
-	geniCodeToobig                = 6
-	geniCodeRefused               = 7
-	geniCodeTimedout              = 8
-	geniCodeDberror               = 9
-	geniCodeRpcerror              = 10
-	geniCodeUnavailable           = 11
-	geniCodeSearchfailed          = 12
-	geniCodeUnsupported           = 13
-	geniCodeBusy                  = 14
-	geniCodeExpired               = 15
-	geniCodeInprogress            = 16
-	geniCodeAlreadyexists         = 17
-	geniCodeVlanUnavailable       = 24
-	geniCodeInsufficientBandwidth = 25
+	// Success
+	geniCodeSuccess = 0
+	// Bad Arguments: malformed
+	geniCodeBadargs = 1
+	// Error (other)
+	geniCodeError = 2
+	// Operation Forbidden: eg supplied credentials do not provide sufficient privileges (on the given slice)
+	geniCodeForbidden = 3
+	// Bad Version (eg of RSpec)
+	geniCodeBadversion = 4
+	// Server Error
+	geniCodeServerror = 5
+	// Too Big (eg request RSpec)
+	geniCodeToobig = 6
+	// Operation Refused
+	geniCodeRefused = 7
+	// Operation Timed Out
+	geniCodeTimedout = 8
+	// Database Error
+	geniCodeDberror = 9
+	// RPC Error
+	geniCodeRpcerror = 10
+	// Unavailable (eg server in lockdown)
+	geniCodeUnavailable = 11
+	// Search Failed (eg for slice)
+	geniCodeSearchfailed = 12
+	// Operation Unsupported
+	geniCodeUnsupported = 13
+	// Busy (resource, slice, or server); try again later
+	geniCodeBusy = 14
+	// Expired (eg slice)
+	geniCodeExpired = 15
+	// In Progress
+	geniCodeInprogress = 16
+	// Already Exists (eg slice)
+	geniCodeAlreadyexists = 17
 )
 
 // https://groups.geni.net/geni/wiki/GAPI_AM_API_V3/CommonConcepts#SliverAllocationStates
 const (
+	// The sliver does not exist. This is the small black circle in typical state diagrams.
 	geniStateUnallocated = "geni_unallocated"
-	geniStateAllocated   = "geni_allocated"
+	// The sliver exists, defines particular resources, and is in a slice.
+	// The aggregate has not (if possible) done any time consuming or expensive work to instantiate the resources,
+	// provision them, or make it difficult to revert the slice to the state prior to allocating this sliver.
+	// This state is what the aggregate is offering the experimenter.
+	geniStateAllocated = "geni_allocated"
+	// The aggregate has started instantiating resources, and otherwise making changes to resources
+	// and the slice to make the resources available to the experimenter.
+	// At this point, operational states are valid to specify further when
+	// the resources are available for experimenter use.
 	geniStateProvisioned = "geni_provisioned"
 )
 
@@ -177,6 +202,9 @@ const (
 	geniAllocateMany = "geny_many"
 )
 
+// https://groups.geni.net/geni/wiki/GeniApiCredentials
+// https://groups.geni.net/geni/wiki/GAPI_AM_API_V3/CommonConcepts#credentials
 const (
-	geniCredentialTypeSfa = "geny_sfa"
+	geniCredentialTypeAbac = "geni_abac"
+	geniCredentialTypeSfa  = "geny_sfa"
 )
