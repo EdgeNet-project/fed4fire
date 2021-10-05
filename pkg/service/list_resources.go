@@ -92,7 +92,7 @@ func (s *Service) ListResources(
 	}
 
 	if args.Options.Compressed {
-		reply.Data.Value = utils.ZlibBase64(xml_)
+		reply.Data.Value = utils.CompressZlibBase64(xml_)
 	} else {
 		reply.Data.Value = string(xml_)
 	}

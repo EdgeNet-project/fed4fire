@@ -4,6 +4,8 @@
 
 ❗This repository is currently private during the design phase. We'll squash the commits and make it public at a later time.
 
+TODO: Add coverage/docker badges.
+
 ## Development
 
 ```bash

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/xml"
+	"github.com/EdgeNet-project/fed4fire/pkg/utils"
 	"net/http"
 	"testing"
 
@@ -28,6 +29,30 @@ func testService() *Service {
 func testRequest() *http.Request {
 	r, _ := http.NewRequestWithContext(context.TODO(), "", "", nil)
 	return r
+}
+
+func testNode(name string, ready bool) *v1.Node {
+	var readyStatus v1.ConditionStatus = "True"
+	if !ready {
+		readyStatus = "False"
+	}
+	return &v1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+			Labels: map[string]string{
+				"edge-net.io/lat": "s-23.533500",
+				"edge-net.io/lon": "w-46.635900",
+			},
+		},
+		Status: v1.NodeStatus{
+			Conditions: []v1.NodeCondition{
+				{
+					Type:   "Ready",
+					Status: readyStatus,
+				},
+			},
+		},
+	}
 }
 
 func TestListResources_BadRspecVersion(t *testing.T) {
@@ -91,48 +116,14 @@ func TestListResources_NoNodes(t *testing.T) {
 func TestListResources_Nodes(t *testing.T) {
 	s := testService()
 	r := testRequest()
-
-	nodes := []v1.Node{
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "node-1",
-				Labels: map[string]string{
-					"edge-net.io/lat": "s-23.533500",
-					"edge-net.io/lon": "w-46.635900",
-				},
-			},
-			Status: v1.NodeStatus{
-				Conditions: []v1.NodeCondition{
-					{
-						Type:   "Ready",
-						Status: "True",
-					},
-				},
-			},
-		},
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "node-2",
-				Labels: map[string]string{
-					"edge-net.io/lat": "s-23.533500",
-					"edge-net.io/lon": "w-46.635900",
-				},
-			},
-			Status: v1.NodeStatus{
-				Conditions: []v1.NodeCondition{
-					{
-						Type:   "Ready",
-						Status: "False",
-					},
-				},
-			},
-		},
+	nodes := []*v1.Node{
+		testNode("node-1", true),
+		testNode("node-2", true),
+		testNode("node-3", false),
 	}
-
 	for _, node := range nodes {
-		s.KubernetesClient.CoreV1().Nodes().Create(context.TODO(), &node, metav1.CreateOptions{})
+		s.KubernetesClient.CoreV1().Nodes().Create(context.TODO(), node, metav1.CreateOptions{})
 	}
-
 	args := &ListResourcesArgs{
 		Options: ListResourcesOptions{
 			RspecVersion: RspecVersion{
@@ -152,9 +143,44 @@ func TestListResources_Nodes(t *testing.T) {
 	if got := v.Type; got != rspec.RspecTypeAdvertisement {
 		t.Errorf("Type = %s; want %s", got, rspec.RspecTypeAdvertisement)
 	}
+	if got := len(v.Nodes); got != 3 {
+		t.Errorf("len(Nodes) = %d; want %d", got, 3)
+	}
+}
+
+func TestListResources_NodesAvailableCompressed(t *testing.T) {
+	s := testService()
+	r := testRequest()
+	nodes := []*v1.Node{
+		testNode("node-1", true),
+		testNode("node-2", true),
+		testNode("node-3", false),
+	}
+	for _, node := range nodes {
+		s.KubernetesClient.CoreV1().Nodes().Create(context.TODO(), node, metav1.CreateOptions{})
+	}
+	args := &ListResourcesArgs{
+		Options: ListResourcesOptions{
+			Available:  true,
+			Compressed: true,
+			RspecVersion: RspecVersion{
+				Type:    "geni",
+				Version: "3",
+			}}}
+	reply := &ListResourcesReply{}
+	err := s.ListResources(r, args, reply)
+	if err != nil {
+		t.Errorf("GetVersion() = %v; want nil", err)
+	}
+	if got := reply.Data.Code.Code; got != geniCodeSuccess {
+		t.Errorf("Code = %d; want %d", got, geniCodeSuccess)
+	}
+	v := rspec.Rspec{}
+	_ = xml.Unmarshal(utils.DecompressZlibBase64(reply.Data.Value), &v)
+	if got := v.Type; got != rspec.RspecTypeAdvertisement {
+		t.Errorf("Type = %s; want %s", got, rspec.RspecTypeAdvertisement)
+	}
 	if got := len(v.Nodes); got != 2 {
 		t.Errorf("len(Nodes) = %d; want %d", got, 2)
 	}
 }
-
-// TODO: Test available and compressed options
