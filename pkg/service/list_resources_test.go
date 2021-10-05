@@ -3,18 +3,35 @@ package service
 import (
 	"context"
 	"encoding/xml"
-	"github.com/EdgeNet-project/fed4fire/pkg/rspec"
 	"net/http"
 	"testing"
 
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/EdgeNet-project/edgenet/pkg/generated/clientset/versioned"
 	edgenettestclient "github.com/EdgeNet-project/edgenet/pkg/generated/clientset/versioned/fake"
+	"github.com/EdgeNet-project/fed4fire/pkg/rspec"
 	"k8s.io/client-go/kubernetes"
 	kubetestclient "k8s.io/client-go/kubernetes/fake"
 )
 
+func testService() *Service {
+	var edgenetClient versioned.Interface = edgenettestclient.NewSimpleClientset()
+	var kubernetesClient kubernetes.Interface = kubetestclient.NewSimpleClientset()
+	return &Service{
+		EdgenetClient:    edgenetClient,
+		KubernetesClient: kubernetesClient,
+	}
+}
+
+func testRequest() *http.Request {
+	r, _ := http.NewRequestWithContext(context.TODO(), "", "", nil)
+	return r
+}
+
 func TestListResources_BadRspecVersion(t *testing.T) {
-	s := Service{}
+	s := testService()
 	args := &ListResourcesArgs{Options: ListResourcesOptions{RspecVersion: RspecVersion{
 		Type:    "geni",
 		Version: "2",
@@ -31,7 +48,7 @@ func TestListResources_BadRspecVersion(t *testing.T) {
 }
 
 func TestListResources_MissingRspecVersion(t *testing.T) {
-	s := Service{}
+	s := testService()
 	args := &ListResourcesArgs{}
 	reply := &ListResourcesReply{}
 	err := s.ListResources(nil, args, reply)
@@ -45,13 +62,8 @@ func TestListResources_MissingRspecVersion(t *testing.T) {
 }
 
 func TestListResources_NoNodes(t *testing.T) {
-	var edgenetClient versioned.Interface = edgenettestclient.NewSimpleClientset()
-	var kubernetesClient kubernetes.Interface = kubetestclient.NewSimpleClientset()
-	r, _ := http.NewRequestWithContext(context.TODO(), "", "", nil)
-	s := Service{
-		EdgenetClient:    edgenetClient,
-		KubernetesClient: kubernetesClient,
-	}
+	s := testService()
+	r := testRequest()
 	args := &ListResourcesArgs{
 		Options: ListResourcesOptions{
 			RspecVersion: RspecVersion{
@@ -75,3 +87,74 @@ func TestListResources_NoNodes(t *testing.T) {
 		t.Errorf("len(Nodes) = %d; want %d", got, 0)
 	}
 }
+
+func TestListResources_Nodes(t *testing.T) {
+	s := testService()
+	r := testRequest()
+
+	nodes := []v1.Node{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "node-1",
+				Labels: map[string]string{
+					"edge-net.io/lat": "s-23.533500",
+					"edge-net.io/lon": "w-46.635900",
+				},
+			},
+			Status: v1.NodeStatus{
+				Conditions: []v1.NodeCondition{
+					{
+						Type:   "Ready",
+						Status: "True",
+					},
+				},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "node-2",
+				Labels: map[string]string{
+					"edge-net.io/lat": "s-23.533500",
+					"edge-net.io/lon": "w-46.635900",
+				},
+			},
+			Status: v1.NodeStatus{
+				Conditions: []v1.NodeCondition{
+					{
+						Type:   "Ready",
+						Status: "False",
+					},
+				},
+			},
+		},
+	}
+
+	for _, node := range nodes {
+		s.KubernetesClient.CoreV1().Nodes().Create(context.TODO(), &node, metav1.CreateOptions{})
+	}
+
+	args := &ListResourcesArgs{
+		Options: ListResourcesOptions{
+			RspecVersion: RspecVersion{
+				Type:    "geni",
+				Version: "3",
+			}}}
+	reply := &ListResourcesReply{}
+	err := s.ListResources(r, args, reply)
+	if err != nil {
+		t.Errorf("GetVersion() = %v; want nil", err)
+	}
+	if got := reply.Data.Code.Code; got != geniCodeSuccess {
+		t.Errorf("Code = %d; want %d", got, geniCodeSuccess)
+	}
+	v := rspec.Rspec{}
+	_ = xml.Unmarshal([]byte(reply.Data.Value), &v)
+	if got := v.Type; got != rspec.RspecTypeAdvertisement {
+		t.Errorf("Type = %s; want %s", got, rspec.RspecTypeAdvertisement)
+	}
+	if got := len(v.Nodes); got != 2 {
+		t.Errorf("len(Nodes) = %d; want %d", got, 2)
+	}
+}
+
+// TODO: Test available and compressed options
