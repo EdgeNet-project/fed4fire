@@ -22,6 +22,9 @@ func testService() *Service {
 	var edgenetClient versioned.Interface = edgenettestclient.NewSimpleClientset()
 	var kubernetesClient kubernetes.Interface = kubetestclient.NewSimpleClientset()
 	return &Service{
+		ContainerImages: map[string]string{
+			"ubuntu2004": "docker.io/library/ubuntu:20.04",
+		},
 		EdgenetClient:    edgenetClient,
 		KubernetesClient: kubernetesClient,
 	}
