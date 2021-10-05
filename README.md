@@ -1,4 +1,4 @@
-# Fed4FIRE+ Aggregate Manager for EdgeNet
+# Fed4FIRE Aggregate Manager for EdgeNet
 
 [![Go](https://github.com/EdgeNet-project/fed4fire/actions/workflows/go.yml/badge.svg)](https://github.com/EdgeNet-project/fed4fire/actions/workflows/go.yml)
 

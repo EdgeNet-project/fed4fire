@@ -1,3 +1,4 @@
+// This package implements the Fed4Fire Aggregate Manager API for EdgeNet/Kubernetes.
 package main
 
 import (
@@ -19,17 +20,6 @@ import (
 	"strings"
 )
 
-func logRequest(i *rpc.RequestInfo) {
-	klog.InfoS(
-		"Received XML-RPC request",
-		"proto", i.Request.Proto,
-		"method", i.Request.Method,
-		"uri", i.Request.RequestURI,
-		"rpc-method", i.Method,
-		"user-agent", i.Request.UserAgent(),
-	)
-}
-
 var showHelp bool
 var authorityName string
 var containerImages utils.ArrayFlags
@@ -44,6 +34,17 @@ var serverAddr string
 var serverCertFile string
 var serverKeyFile string
 var trustedRootCerts utils.ArrayFlags
+
+func logRequest(i *rpc.RequestInfo) {
+	klog.InfoS(
+		"Received XML-RPC request",
+		"proto", i.Request.Proto,
+		"method", i.Request.Method,
+		"uri", i.Request.RequestURI,
+		"rpc-method", i.Method,
+		"user-agent", i.Request.UserAgent(),
+	)
+}
 
 func main() {
 	klog.InitFlags(nil)
@@ -89,6 +90,7 @@ func main() {
 	for _, s := range containerImages {
 		arr := strings.SplitN(s, ":", 2)
 		containerImages_[arr[0]] = arr[1]
+		klog.InfoS("Parsed container image name", "name", arr[0], "image", arr[1])
 	}
 
 	s := &service.Service{

@@ -10,7 +10,7 @@ type Rspec struct {
 
 type Node struct {
 	XMLName            xml.Name     `xml:"node"`
-	ClientID		   string 		`xml:"client_id,attr,omitempty"`
+	ClientID           string       `xml:"client_id,attr,omitempty"`
 	ComponentID        string       `xml:"component_id,attr"`
 	ComponentManagerID string       `xml:"component_manager_id,attr"`
 	ComponentName      string       `xml:"component_name,attr"`

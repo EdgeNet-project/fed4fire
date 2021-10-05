@@ -3,15 +3,16 @@ package service
 import (
 	"encoding/xml"
 	"fmt"
+	"html"
+	"io"
+	"log"
+	"os/exec"
+
 	"github.com/EdgeNet-project/edgenet/pkg/generated/clientset/versioned"
 	"github.com/EdgeNet-project/fed4fire/pkg/sfa"
 	"github.com/EdgeNet-project/fed4fire/pkg/urn"
 	"github.com/EdgeNet-project/fed4fire/pkg/utils"
-	"html"
-	"io"
 	"k8s.io/client-go/kubernetes"
-	"log"
-	"os/exec"
 )
 
 type Service struct {
@@ -72,9 +73,13 @@ func (c Credential) SFA() sfa.SignedCredential {
 
 func (c Credential) Validate() bool {
 	// TODO: Accept path to PEMs
-	cmd := exec.Command("xmlsec1", "--verify",
-		"--trusted-pem", "/Users/maxmouchet/Clones/github.com/EdgeNet-project/fed4fire/trusted_roots/ilabt.imec.be.pem",
-		"-")
+	cmd := exec.Command(
+		"xmlsec1",
+		"--verify",
+		"--trusted-pem",
+		"/Users/maxmouchet/Clones/github.com/EdgeNet-project/fed4fire/trusted_roots/ilabt.imec.be.pem",
+		"-",
+	)
 	stdin, err := cmd.StdinPipe()
 	utils.Check(err)
 
@@ -108,7 +113,7 @@ const (
 const (
 	fed4fireClientId   = "fed4fire.eu/client-id"
 	fed4fireExpiryTime = "fed4fire.eu/expiry-time"
-	fed4fireImageName  = "fed4fire.eu/image-name"
+	fed4fireImage      = "fed4fire.eu/image"
 	fed4fireSlice      = "fed4fire.eu/slice"
 	fed4fireUser       = "fed4fire.eu/user"
 )

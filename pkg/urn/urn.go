@@ -2,9 +2,10 @@ package urn
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/EdgeNet-project/fed4fire/pkg/utils"
 	"github.com/oriser/regroup"
-	"strings"
 )
 
 // https://groups.geni.net/geni/wiki/GeniApiIdentifiers

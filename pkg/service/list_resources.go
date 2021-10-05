@@ -4,12 +4,13 @@ import (
 	"context"
 	"encoding/xml"
 	"fmt"
+	"net/http"
+
 	"github.com/EdgeNet-project/fed4fire/pkg/rspec"
 	"github.com/EdgeNet-project/fed4fire/pkg/utils"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
-	"net/http"
 )
 
 type ListResourcesArgs struct {
@@ -28,7 +29,11 @@ type ListResourcesReply struct {
 // The resource listing and description provides sufficient information for clients to select among available resources.
 // These listings are known as advertisement RSpecs.
 // https://groups.geni.net/geni/wiki/GAPI_AM_API_V3#ListResources
-func (s *Service) ListResources(r *http.Request, args *ListResourcesArgs, reply *ListResourcesReply) error {
+func (s *Service) ListResources(
+	r *http.Request,
+	args *ListResourcesArgs,
+	reply *ListResourcesReply,
+) error {
 	nodes, err := s.KubernetesClient.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		reply.Data.Value = "Failed to list nodes"
@@ -65,7 +70,11 @@ func (s *Service) ListResources(r *http.Request, args *ListResourcesArgs, reply 
 }
 
 // rspecForNode converts a Kubernetes node to an RSpec node.
-func rspecForNode(node corev1.Node, containerImages map[string]string, urn func(resourceType string, resourceName string) string) rspec.Node {
+func rspecForNode(
+	node corev1.Node,
+	containerImages map[string]string,
+	urn func(resourceType string, resourceName string) string,
+) rspec.Node {
 	nodeArch := node.Labels["kubernetes.io/arch"]
 	nodeCountry := node.Labels["edge-net.io/country-iso"]
 	nodeLatitude := node.Labels["edge-net.io/lat"][1:]

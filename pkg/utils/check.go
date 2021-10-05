@@ -1,8 +1,9 @@
 package utils
 
 import (
-	"k8s.io/klog/v2"
 	"os"
+
+	"k8s.io/klog/v2"
 )
 
 func Check(err error) {
@@ -11,4 +12,3 @@ func Check(err error) {
 		os.Exit(1)
 	}
 }
-
