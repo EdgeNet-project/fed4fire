@@ -373,8 +373,8 @@ github.com/mattn/go-isatty v0.0.4/go.mod h1:M+lRXTBqGeGNdLjl/ufCoiOlB5xdOkqRJdNx
 github.com/mattn/go-isatty v0.0.12/go.mod h1:cbi8OIDigv2wuxKPP5vlRcQ1OAZbq2CE4Kysco4FUpU=
 github.com/mattn/go-runewidth v0.0.2/go.mod h1:LwmH8dsx7+W8Uxz3IHJYH5QSwggIsqBzpuz5H//U1FU=
 github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5Ld7szi9bcBfOoFv/3dc6xSMkL2PC0=
-github.com/maxmouchet/gorilla-xmlrpc v0.0.0-20210921132515-d7a57ddb8d05 h1:YGF0T1t51oJA4bZiZ6yyEdFEq5mq9rY/UjtENA0YaR0=
-github.com/maxmouchet/gorilla-xmlrpc v0.0.0-20210921132515-d7a57ddb8d05/go.mod h1:IdvYQpu47SeVIhHoFZLEa/Da39zRvOxGY8bO/4FPQe4=
+github.com/maxmouchet/gorilla-xmlrpc v0.0.0-20211005130100-890b428d4cb1 h1:BumYr4ZtZXrkoSmKJW+V9Xyb7PY7u66AZaVDnmPBm8I=
+github.com/maxmouchet/gorilla-xmlrpc v0.0.0-20211005130100-890b428d4cb1/go.mod h1:IdvYQpu47SeVIhHoFZLEa/Da39zRvOxGY8bO/4FPQe4=
 github.com/mdlayher/ethtool v0.0.0-20210210192532-2b88debcdd43/go.mod h1:+t7E0lkKfbBsebllff1xdTmyJt8lH37niI6kwFk9OTo=
 github.com/mdlayher/genetlink v1.0.0/go.mod h1:0rJ0h4itni50A86M2kHcgS85ttZazNt7a8H2a2cw0Gc=
 github.com/mdlayher/netlink v0.0.0-20190409211403-11939a169225/go.mod h1:eQB3mZE4aiYnlUsyGGCOpPETfdQq4Jhsgf1fk3cwQaA=

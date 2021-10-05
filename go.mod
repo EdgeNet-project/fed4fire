@@ -11,7 +11,7 @@ require (
 	github.com/imdario/mergo v0.3.12 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/kr/pretty v0.3.0 // indirect
-	github.com/maxmouchet/gorilla-xmlrpc v0.0.0-20210921132515-d7a57ddb8d05
+	github.com/maxmouchet/gorilla-xmlrpc v0.0.0-20211005130100-890b428d4cb1
 	github.com/oriser/regroup v0.0.0-20210730155327-fca8d7531263
 	github.com/rogpeppe/go-internal v1.8.0 // indirect
 	golang.org/x/net v0.0.0-20210917221730-978cfadd31cf // indirect

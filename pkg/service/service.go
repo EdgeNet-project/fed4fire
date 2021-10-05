@@ -108,6 +108,8 @@ type Options struct {
 	// If the value is true (1), the returned resource list will be compressed according to RFC 1950.
 	// If the value is false (0) or unspecified, the return will be text.
 	Compressed bool `xml:"geni_compressed"`
+	// Requested expiration of all new slivers, may be ignored by aggregates.
+	EndTime string `xml:"geni_end_time"`
 	// XML-RPC struct indicating the type and version of Advertisement RSpec to return.
 	// The struct contains 2 members, type and version. type and version are case-insensitive strings,
 	// matching those in geni_ad_rspec_versions as returned by GetVersion at this aggregate.
@@ -120,11 +122,13 @@ type Options struct {
 	} `xml:"geni_rspec_version"`
 }
 
+// Default value for new deployments.
 const (
 	defaultCpuRequest    = "0.01"
 	defaultMemoryRequest = "16Mi"
 )
 
+// Names for Kubernetes objects labels and annotations.
 const (
 	fed4fireClientId   = "fed4fire.eu/client-id"
 	fed4fireExpiryTime = "fed4fire.eu/expiry-time"

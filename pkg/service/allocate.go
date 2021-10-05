@@ -23,11 +23,16 @@ import (
 	"k8s.io/utils/pointer"
 )
 
+type AllocateOptions struct {
+	// Optional. Requested expiration of all new slivers, may be ignored by aggregates.
+	EndTime string `xml:"geni_end_time"`
+}
+
 type AllocateArgs struct {
 	SliceURN    string
 	Credentials []Credential
 	Rspec       string
-	Options     string // Options
+	Options     AllocateOptions
 }
 
 type AllocateReply struct {
@@ -36,6 +41,7 @@ type AllocateReply struct {
 		Value struct {
 			Rspec   string   `xml:"geni_rspec"`
 			Slivers []Sliver `xml:"geni_slivers"`
+			Error   string   `xml:"geni_error"`
 		} `xml:"value"`
 	}
 }
@@ -43,8 +49,7 @@ type AllocateReply struct {
 func (v *AllocateReply) SetAndLogError(err error, msg string, keysAndValues ...interface{}) {
 	klog.ErrorS(err, msg, keysAndValues...)
 	v.Data.Code.Code = geniCodeError
-	// TODO
-	// v.Data.Value = fmt.Sprintf("%s: %s", msg, err)
+	v.Data.Value.Error = fmt.Sprintf("%s: %s", msg, err)
 }
 
 // Allocate allocates resources as described in a request RSpec argument to a slice with the named URN.
@@ -58,6 +63,7 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 	if err != nil {
 		reply.SetAndLogError(err, "Failed to parse slice URN")
 	}
+
 	userIdentifier, err := identifiers.Parse(credential.TargetURN)
 	if err != nil {
 		reply.SetAndLogError(err, "Failed to parse user URN")
@@ -286,7 +292,7 @@ func deploymentForRspec(
 			Name: clientId,
 			Annotations: map[string]string{
 				// TODO: Create vacuum job.
-				fed4fireExpiryTime: (time.Now().Add(86400 * time.Second)).String(),
+				fed4fireExpiryTime: (time.Now().Add(24 * time.Hour)).Format(time.RFC3339),
 				fed4fireUser:       userIdentifier.URN(),
 				fed4fireSlice:      sliceIdentifier.URN(),
 				fed4fireSliver:     sliverIdentifier.URN(),
