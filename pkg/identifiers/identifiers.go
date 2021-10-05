@@ -1,3 +1,5 @@
+// Package identifiers implements GENI API Identifiers.
+// https://groups.geni.net/geni/wiki/GeniApiIdentifiers
 package identifiers
 
 import (
@@ -8,7 +10,14 @@ import (
 	"github.com/oriser/regroup"
 )
 
-// https://groups.geni.net/geni/wiki/GeniApiIdentifiers
+const (
+	ResourceTypeAuthority = "authority"
+	ResourceTypeImage     = "image"
+	ResourceTypeNode      = "node"
+	ResourceTypeSlice     = "slice"
+	ResourceTypeSliver    = "sliver"
+)
+
 // `urn:publicid:IDN+toplevelauthority[:sub-authority]*\+resource-type\+resource-name`
 var re = regroup.MustCompile(
 	`urn:publicid:IDN\+(?P<authorities>.+?)\+(?P<resource_type>\w+)\+(?P<resource_name>[\w\+]+)`,

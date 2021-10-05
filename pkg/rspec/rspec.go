@@ -2,6 +2,11 @@ package rspec
 
 import "encoding/xml"
 
+const (
+	RspecTypeAdvertisement = "advertisement"
+	RspecTypeRequest       = "request"
+)
+
 type Rspec struct {
 	XMLName xml.Name `xml:"rspec"`
 	Type    string   `xml:"type,attr"`

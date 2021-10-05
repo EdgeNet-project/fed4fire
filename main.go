@@ -89,7 +89,7 @@ func main() {
 
 	authorityIdentifier := identifiers.Identifier{
 		Authorities:  []string{authorityName},
-		ResourceType: "authority",
+		ResourceType: identifiers.ResourceTypeAuthority,
 		ResourceName: "am",
 	}
 

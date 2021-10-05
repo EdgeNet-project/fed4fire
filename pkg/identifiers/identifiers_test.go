@@ -87,7 +87,7 @@ func TestIdentifier_Copy(t *testing.T) {
 	}
 }
 
-func TestIdentifier_String(t *testing.T) {
+func TestIdentifier_URN(t *testing.T) {
 	type fields struct {
 		Authorities  []string
 		ResourceType string

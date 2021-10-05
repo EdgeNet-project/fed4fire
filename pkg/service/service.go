@@ -130,11 +130,11 @@ const (
 
 // Names for Kubernetes objects labels and annotations.
 const (
-	fed4fireClientId   = "fed4fire.eu/client-id"
-	fed4fireExpiryTime = "fed4fire.eu/expiry-time"
-	fed4fireSlice      = "fed4fire.eu/slice"
-	fed4fireSliver     = "fed4fire.eu/sliver"
-	fed4fireUser       = "fed4fire.eu/user"
+	fed4fireClientId = "fed4fire.eu/client-id"
+	fed4fireExpires  = "fed4fire.eu/expires"
+	fed4fireSlice    = "fed4fire.eu/slice"
+	fed4fireSliver   = "fed4fire.eu/sliver"
+	fed4fireUser     = "fed4fire.eu/user"
 )
 
 // https://groups.geni.net/geni/attachment/wiki/GAPI_AM_API_V3/CommonConcepts/geni-error-codes.xml

@@ -78,6 +78,8 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 
 	// Q: How does a user choose a node?
 	// A: By specifying the component ID. We must check that the node truly exists beforehand.
+	// Actually require the user to specify a node name.
+	// TODO: Fill missing values in the Rspec.
 
 	// 1. Get or create the subnamespace for the slice
 	subnamespaceClient := s.EdgenetClient.CoreV1alpha().SubNamespaces(s.ParentNamespace)
@@ -168,12 +170,12 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 	// TODO: Specify the correct value for geni_allocate
 	// As described here, the geni_allocate return from GetVersion advertises when a client may legally call Allocate
 	// (only once at a time per slice, whenever desired, or multiple times only if the requested resources do not interact).
-	returnRspec := rspec.Rspec{Type: "request"}
+	returnRspec := rspec.Rspec{Type: rspec.RspecTypeRequest}
 	for i, isDeployed := range deployed {
 		if isDeployed {
 			sliver := Sliver{
 				URN:              deployments[i].Annotations[fed4fireSliver],
-				Expires:          deployments[i].Annotations[fed4fireExpiryTime],
+				Expires:          deployments[i].Annotations[fed4fireExpires],
 				AllocationStatus: geniStateAllocated,
 			}
 			reply.Data.Value.Slivers = append(reply.Data.Value.Slivers, sliver)
@@ -192,7 +194,7 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 }
 
 func subnamespaceNameForSlice(identifier identifiers.Identifier) (string, error) {
-	if identifier.ResourceType != "slice" {
+	if identifier.ResourceType != identifiers.ResourceTypeSlice {
 		return "", fmt.Errorf("URN resource type must be `slice`")
 	}
 	s := fmt.Sprintf(
@@ -279,7 +281,7 @@ func deploymentForRspec(
 		return nil, err
 	}
 	clientId := strings.ToLower(node.ClientID)
-	sliverIdentifier := authorityIdentifier.Copy("sliver",
+	sliverIdentifier := authorityIdentifier.Copy(identifiers.ResourceTypeSliver,
 		fmt.Sprintf(
 			"%s-%s-%s",
 			strings.Join(sliceIdentifier.Authorities, "-"),
@@ -292,10 +294,10 @@ func deploymentForRspec(
 			Name: clientId,
 			Annotations: map[string]string{
 				// TODO: Create vacuum job.
-				fed4fireExpiryTime: (time.Now().Add(24 * time.Hour)).Format(time.RFC3339),
-				fed4fireUser:       userIdentifier.URN(),
-				fed4fireSlice:      sliceIdentifier.URN(),
-				fed4fireSliver:     sliverIdentifier.URN(),
+				fed4fireExpires: (time.Now().Add(24 * time.Hour)).Format(time.RFC3339),
+				fed4fireUser:    userIdentifier.URN(),
+				fed4fireSlice:   sliceIdentifier.URN(),
+				fed4fireSliver:  sliverIdentifier.URN(),
 			},
 		},
 		Spec: appsv1.DeploymentSpec{

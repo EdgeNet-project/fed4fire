@@ -3,14 +3,15 @@ package service
 import (
 	"encoding/xml"
 	"fmt"
+	"net/http"
+	"strings"
+
 	"github.com/EdgeNet-project/fed4fire/pkg/identifiers"
 	"github.com/EdgeNet-project/fed4fire/pkg/rspec"
 	"github.com/EdgeNet-project/fed4fire/pkg/utils"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
-	"net/http"
-	"strings"
 )
 
 type ListResourcesOptions struct {
@@ -65,7 +66,8 @@ func (s *Service) ListResources(
 	args *ListResourcesArgs,
 	reply *ListResourcesReply,
 ) error {
-	if strings.ToLower(args.Options.RspecVersion.Type) != "geni" || args.Options.RspecVersion.Version != "3" {
+	if strings.ToLower(args.Options.RspecVersion.Type) != "geni" ||
+		args.Options.RspecVersion.Version != "3" {
 		reply.Data.Code.Code = geniCodeBadversion
 		return nil
 	}
@@ -76,7 +78,7 @@ func (s *Service) ListResources(
 		return nil
 	}
 
-	v := rspec.Rspec{Type: "advertisement"}
+	v := rspec.Rspec{Type: rspec.RspecTypeAdvertisement}
 	for _, node := range nodes.Items {
 		node_ := rspecForNode(node, s.AuthorityIdentifier, s.ContainerImages)
 		if !(args.Options.Available && !node_.Available.Now) {
@@ -121,11 +123,11 @@ func rspecForNode(
 	diskImages := make([]rspec.DiskImage, 0)
 	for name := range containerImages {
 		diskImages = append(diskImages, rspec.DiskImage{
-			Name: authorityIdentifier.Copy("image", name).URN(),
+			Name: authorityIdentifier.Copy(identifiers.ResourceTypeImage, name).URN(),
 		})
 	}
 	return rspec.Node{
-		ComponentID:        authorityIdentifier.Copy("node", nodeName).URN(),
+		ComponentID:        authorityIdentifier.Copy(identifiers.ResourceTypeNode, nodeName).URN(),
 		ComponentManagerID: authorityIdentifier.URN(),
 		ComponentName:      nodeName,
 		Available:          rspec.Available{Now: nodeIsReady},
