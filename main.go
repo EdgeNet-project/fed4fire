@@ -64,14 +64,6 @@ func main() {
 		os.Exit(0)
 	}
 
-	//caCertPool := x509.NewCertPool()
-	//for _, file := range trustedRootCerts {
-	//	caCert, err := ioutil.ReadFile(file)
-	//	utils.Check(err)
-	//	caCertPool.AppendCertsFromPEM(caCert)
-	//	klog.InfoS("Loaded trusted certificate", "file", file)
-	//}
-
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfigFile)
 	utils.Check(err)
 
