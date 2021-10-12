@@ -4,11 +4,12 @@ package service
 import (
 	"encoding/xml"
 	"fmt"
+	"html"
+
 	"github.com/EdgeNet-project/edgenet/pkg/generated/clientset/versioned"
 	"github.com/EdgeNet-project/fed4fire/pkg/identifiers"
 	"github.com/EdgeNet-project/fed4fire/pkg/sfa"
 	"github.com/crewjam/go-xmlsec"
-	"html"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -94,6 +95,32 @@ type Options struct {
 		Type    string `xml:"type"`
 		Version string `xml:"version"`
 	} `xml:"geni_rspec_version"`
+}
+
+func FindMatchingCredential(
+	userIdentifier identifiers.Identifier,
+	targetIdentifier identifiers.Identifier,
+	credentials []Credential,
+	trustedCertificates [][]byte,
+) (*sfa.Credential, error) {
+	for _, credential := range credentials {
+		validated, err := credential.ValidatedSFA(trustedCertificates)
+		if err != nil {
+			return nil, err
+		}
+		ownerId, err := validated.OwnerIdentifier()
+		if err != nil {
+			return nil, err
+		}
+		targetId, err := validated.TargetIdentifier()
+		if err != nil {
+			return nil, err
+		}
+		if ownerId.Equal(userIdentifier) && targetId.Equal(targetIdentifier) {
+			return validated, nil
+		}
+	}
+	return nil, fmt.Errorf("no matching credential found")
 }
 
 // Default value for new deployments.

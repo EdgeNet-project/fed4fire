@@ -39,6 +39,10 @@ func (v Identifier) Copy(resourceType string, resourceName string) Identifier {
 	}
 }
 
+func (v Identifier) Equal(vp Identifier) bool {
+	return v.URN() == vp.URN()
+}
+
 func (v Identifier) URN() string {
 	return fmt.Sprintf(
 		"urn:publicid:IDN+%s+%s+%s",

@@ -34,6 +34,13 @@ var serverAddr string
 var trustedRootCerts utils.ArrayFlags
 
 func beforeFunc(i *rpc.RequestInfo) {
+	escapedCert := i.Request.Header.Get(utils.HttpHeaderCertificate)
+	urn, err := utils.GetUserUrnFromEscapedCert(escapedCert)
+	if err == nil {
+		i.Request.Header.Set(utils.HttpHeaderUser, urn)
+	} else {
+		klog.ErrorS(err, "Failed to get user URN from header")
+	}
 	klog.InfoS(
 		"Received XML-RPC request",
 		"proto", i.Request.Proto,
@@ -41,6 +48,7 @@ func beforeFunc(i *rpc.RequestInfo) {
 		"uri", i.Request.RequestURI,
 		"rpc-method", i.Method,
 		"user-agent", i.Request.UserAgent(),
+		"user-urn", i.Request.Header.Get(utils.HttpHeaderUser),
 	)
 }
 
@@ -87,6 +95,8 @@ func main() {
 	}
 
 	s := &service.Service{
+		// TODO: This is invalid with the reverse proxy, add absoluteUrl param?
+		// and rename serverAddr to listenAddr?
 		AbsoluteURL:          fmt.Sprintf("https://%s", serverAddr),
 		AuthorityIdentifier:  authorityIdentifier,
 		ContainerImages:      containerImages_,

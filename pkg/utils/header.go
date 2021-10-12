@@ -4,9 +4,13 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"net/http"
 	"net/url"
 	"strings"
+)
+
+const (
+	HttpHeaderCertificate = "X-Fed4Fire-Certificate"
+	HttpHeaderUser        = "X-Fed4Fire-User"
 )
 
 func GetUserUrn(pemEncodedCert []byte) (string, error) {
@@ -23,8 +27,8 @@ func GetUserUrn(pemEncodedCert []byte) (string, error) {
 	return "", fmt.Errorf("user URN not found")
 }
 
-func GetUserUrnFromHeader(header http.Header) (string, error) {
-	pemEncodedCert, err := url.QueryUnescape(header.Get("X-Fed4Fire-Certificate"))
+func GetUserUrnFromEscapedCert(escapedCert string) (string, error) {
+	pemEncodedCert, err := url.QueryUnescape(escapedCert)
 	if err != nil {
 		return "", nil
 	}

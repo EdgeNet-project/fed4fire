@@ -46,10 +46,15 @@ type ListResourcesReply struct {
 	}
 }
 
-func (v *ListResourcesReply) SetAndLogError(err error, msg string, keysAndValues ...interface{}) {
+func (v *ListResourcesReply) SetAndLogError(
+	err error,
+	msg string,
+	keysAndValues ...interface{},
+) error {
 	klog.ErrorS(err, msg, keysAndValues...)
 	v.Data.Code.Code = geniCodeError
 	v.Data.Value = fmt.Sprintf("%s: %s", msg, err)
+	return nil
 }
 
 // ListResources returns a listing and description of available resources at this aggregate.
@@ -73,8 +78,7 @@ func (s *Service) ListResources(
 
 	nodes, err := s.KubernetesClient.CoreV1().Nodes().List(r.Context(), metav1.ListOptions{})
 	if err != nil {
-		reply.SetAndLogError(err, "Failed to list nodes")
-		return nil
+		return reply.SetAndLogError(err, "Failed to list nodes")
 	}
 
 	v := rspec.Rspec{Type: rspec.RspecTypeAdvertisement}
@@ -87,8 +91,7 @@ func (s *Service) ListResources(
 
 	xml_, err := xml.Marshal(v)
 	if err != nil {
-		reply.SetAndLogError(err, "Failed to serialize response")
-		return nil
+		return reply.SetAndLogError(err, "Failed to serialize response")
 	}
 
 	if args.Options.Compressed {

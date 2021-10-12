@@ -1,10 +1,10 @@
 package sfa
 
 import (
-	"crypto/x509"
-	"encoding/pem"
 	"encoding/xml"
 	"time"
+
+	"github.com/EdgeNet-project/fed4fire/pkg/identifiers"
 )
 
 type SignedCredential struct {
@@ -35,14 +35,34 @@ type Privilege struct {
 	CanDelegate bool     `xml:"can_delegate"`
 }
 
-func (c Credential) OwnerCertificate() *x509.Certificate {
-	block, _ := pem.Decode([]byte(c.OwnerGID))
-	if block == nil {
-		panic("failed to parse certificate PEM")
-	}
-	cert, err := x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		panic(err)
-	}
-	return cert
+func (c Credential) OwnerIdentifier() (*identifiers.Identifier, error) {
+	return identifiers.Parse(c.OwnerURN)
 }
+
+func (c Credential) TargetIdentifier() (*identifiers.Identifier, error) {
+	return identifiers.Parse(c.TargetURN)
+}
+
+//func (c Credential) OwnerCertificate() *x509.Certificate {
+//	block, _ := pem.Decode([]byte(c.OwnerGID))
+//	if block == nil {
+//		panic("failed to parse certificate PEM")
+//	}
+//	cert, err := x509.ParseCertificate(block.Bytes)
+//	if err != nil {
+//		panic(err)
+//	}
+//	return cert
+//}
+//
+//func (c Credential) TargetCertificate() *x509.Certificate {
+//	block, _ := pem.Decode([]byte(c.TargetGID))
+//	if block == nil {
+//		panic("failed to parse certificate PEM")
+//	}
+//	cert, err := x509.ParseCertificate(block.Bytes)
+//	if err != nil {
+//		panic(err)
+//	}
+//	return cert
+//}

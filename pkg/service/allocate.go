@@ -3,7 +3,6 @@ package service
 import (
 	"encoding/xml"
 	"fmt"
-	"github.com/EdgeNet-project/fed4fire/pkg/sfa"
 	"html"
 	"net/http"
 	"strings"
@@ -47,10 +46,11 @@ type AllocateReply struct {
 	}
 }
 
-func (v *AllocateReply) SetAndLogError(err error, msg string, keysAndValues ...interface{}) {
+func (v *AllocateReply) SetAndLogError(err error, msg string, keysAndValues ...interface{}) error {
 	klog.ErrorS(err, msg, keysAndValues...)
 	v.Data.Code.Code = geniCodeError
 	v.Data.Value.Error = fmt.Sprintf("%s: %s", msg, err)
+	return nil
 }
 
 // Allocate allocates resources as described in a request RSpec argument to a slice with the named URN.
@@ -58,47 +58,28 @@ func (v *AllocateReply) SetAndLogError(err error, msg string, keysAndValues ...i
 // This method returns a listing and description of the resources reserved for the slice by this operation, in the form of a manifest RSpec.
 // https://groups.geni.net/geni/wiki/GAPI_AM_API_V3#Allocate
 func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateReply) error {
-	// TODO: Return identifier instead? And move to this package?
-	userUrn, err := utils.GetUserUrnFromHeader(r.Header)
+	userIdentifier, err := identifiers.Parse(r.Header.Get(utils.HttpHeaderUser))
 	if err != nil {
-		reply.SetAndLogError(err, "Failed to decoded user URN")
+		return reply.SetAndLogError(err, "Failed to parse user URN")
 	}
-	var matchingCredential *sfa.Credential
-	for _, credential := range args.Credentials {
-		validated, err := credential.ValidatedSFA(s.TrustedCertificates)
-		if err != nil {
-			reply.SetAndLogError(err, "Failed to validate credential")
-			return nil
-		}
-		if validated.OwnerURN == userUrn && validated.TargetURN == args.SliceURN {
-			matchingCredential = validated
-			break
-		}
-	}
-	if matchingCredential == nil {
-		reply.SetAndLogError(fmt.Errorf("no matching credentials for user and slice URN"), "Invalid credentials")
-		return nil
-	}
-
-	// TODO: Move to credential package? TargetIdentifier(), ...
-	// TODO: Use sliceUrn instead (in case of delegation?)
-	sliceIdentifier, err := identifiers.Parse(matchingCredential.TargetURN)
+	sliceIdentifier, err := identifiers.Parse(args.SliceURN)
 	if err != nil {
-		reply.SetAndLogError(err, "Failed to parse slice URN")
+		return reply.SetAndLogError(err, "Failed to parse slice URN")
 	}
-
-	// TODO: Use userUrn instead (in case of delegation?)
-	userIdentifier, err := identifiers.Parse(matchingCredential.OwnerURN)
+	_, err = FindMatchingCredential(
+		*userIdentifier,
+		*sliceIdentifier,
+		args.Credentials,
+		s.TrustedCertificates,
+	)
 	if err != nil {
-		reply.SetAndLogError(err, "Failed to parse user URN")
-		return nil
+		return reply.SetAndLogError(err, "Invalid credentials")
 	}
 
 	requestRspec := rspec.Rspec{}
 	err = xml.Unmarshal([]byte(html.UnescapeString(args.Rspec)), &requestRspec)
 	if err != nil {
-		reply.SetAndLogError(err, "Failed to deserialize rspec")
-		return nil
+		return reply.SetAndLogError(err, "Failed to deserialize rspec")
 	}
 
 	// Q: How does a user choose a node?
@@ -110,13 +91,12 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 	subnamespaceClient := s.EdgenetClient.CoreV1alpha().SubNamespaces(s.ParentNamespace)
 	subnamespaceName, err := subnamespaceNameForSlice(*sliceIdentifier)
 	if err != nil {
-		reply.SetAndLogError(
+		return reply.SetAndLogError(
 			err,
 			"Failed to build subnamespace name from slice URN",
 			"urn",
 			args.SliceURN,
 		)
-		return nil
 	}
 	// 1.a. Get the subnamespace if it exists
 	subnamespace, err := subnamespaceClient.Get(r.Context(), subnamespaceName, metav1.GetOptions{})
@@ -129,13 +109,21 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 			s.NamespaceMemoryLimit,
 		)
 		if err != nil {
-			reply.SetAndLogError(err, "Failed to build subnamespace", "name", subnamespaceName)
-			return nil
+			return reply.SetAndLogError(
+				err,
+				"Failed to build subnamespace",
+				"name",
+				subnamespaceName,
+			)
 		}
 		_, err = subnamespaceClient.Create(r.Context(), subnamespace, metav1.CreateOptions{})
 		if err != nil {
-			reply.SetAndLogError(err, "Failed to create subnamespace", "name", subnamespaceName)
-			return nil
+			return reply.SetAndLogError(
+				err,
+				"Failed to create subnamespace",
+				"name",
+				subnamespaceName,
+			)
 		}
 		klog.InfoS("Created subnamespace", "name", subnamespaceName)
 	}
@@ -153,8 +141,7 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 			s.ContainerMemoryLimit,
 		)
 		if err != nil {
-			reply.SetAndLogError(err, "Failed to build deployment")
-			return nil
+			return reply.SetAndLogError(err, "Failed to build deployment")
 		}
 		deployments[i] = *deployment
 	}
@@ -170,7 +157,7 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 			klog.InfoS("Ignoring already existing deployment", "name", deployment.Name)
 			deployed[i] = false
 		} else if err != nil {
-			reply.SetAndLogError(err, "Failed to create deployment", "name", deployment.Name)
+			_ = reply.SetAndLogError(err, "Failed to create deployment", "name", deployment.Name)
 			deployed[i] = false
 			success = false
 			break
@@ -210,8 +197,7 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 
 	xml_, err := xml.Marshal(returnRspec)
 	if err != nil {
-		reply.SetAndLogError(err, "Failed to serialize response")
-		return nil
+		return reply.SetAndLogError(err, "Failed to serialize response")
 	}
 	reply.Data.Value.Rspec = string(xml_)
 	reply.Data.Code.Code = geniCodeSuccess
