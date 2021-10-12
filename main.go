@@ -107,11 +107,6 @@ func main() {
 	RPC.RegisterCodec(xmlrpcCodec, "text/xml")
 	utils.Check(RPC.RegisterService(s, ""))
 
-	server := &http.Server{
-		Addr:    serverAddr,
-		Handler: RPC,
-	}
-
 	klog.InfoS("Listening", "address", serverAddr)
-	utils.Check(server.ListenAndServe())
+	utils.Check(http.ListenAndServe(serverAddr, RPC))
 }
