@@ -33,14 +33,13 @@ var parentNamespace string
 var serverAddr string
 var trustedRootCerts utils.ArrayFlags
 
-func logRequest(i *rpc.RequestInfo) {
+func beforeFunc(i *rpc.RequestInfo) {
 	klog.InfoS(
 		"Received XML-RPC request",
 		"proto", i.Request.Proto,
 		"method", i.Request.Method,
 		"uri", i.Request.RequestURI,
 		"rpc-method", i.Method,
-		"subject-dn", i.Request.Header.Get("X-Fed4Fire-DN"),
 		"user-agent", i.Request.UserAgent(),
 	)
 }
@@ -112,7 +111,7 @@ func main() {
 	xmlrpcCodec.SetPrefix("Service.")
 
 	RPC := rpc.NewServer()
-	RPC.RegisterBeforeFunc(logRequest)
+	RPC.RegisterBeforeFunc(beforeFunc)
 	RPC.RegisterCodec(xmlrpcCodec, "text/xml")
 	utils.Check(RPC.RegisterService(s, ""))
 

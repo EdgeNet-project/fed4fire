@@ -4,15 +4,11 @@ package service
 import (
 	"encoding/xml"
 	"fmt"
-	"html"
-	"io"
-	"log"
-	"os/exec"
-
 	"github.com/EdgeNet-project/edgenet/pkg/generated/clientset/versioned"
 	"github.com/EdgeNet-project/fed4fire/pkg/identifiers"
 	"github.com/EdgeNet-project/fed4fire/pkg/sfa"
-	"github.com/EdgeNet-project/fed4fire/pkg/utils"
+	"github.com/crewjam/go-xmlsec"
+	"html"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -25,7 +21,7 @@ type Service struct {
 	NamespaceCpuLimit    string
 	NamespaceMemoryLimit string
 	ParentNamespace      string
-	Insecure             bool
+	TrustedCertificates  [][]byte
 	EdgenetClient        versioned.Interface
 	KubernetesClient     kubernetes.Interface
 }
@@ -51,52 +47,28 @@ type Sliver struct {
 	Error            string `xml:"geni_error"`
 }
 
-func (c Credential) SFA() sfa.SignedCredential {
+func (c Credential) ValidatedSFA(trustedCertificates [][]byte) (*sfa.Credential, error) {
 	if c.Type != "geni_sfa" {
-		panic("credential type is not geni_sfa")
+		return nil, fmt.Errorf("credential type is not geni_sfa")
 	}
+	val := []byte(html.UnescapeString(c.Value))
+	// 1. Verify the credential signature
+	err := xmlsec.VerifyTrusted(trustedCertificates, val, xmlsec.SignatureOptions{})
+	if err != nil {
+		return nil, err
+	}
+	// 2. Decode the credential
 	v := sfa.SignedCredential{}
-	err := xml.Unmarshal([]byte(html.UnescapeString(c.Value)), &v)
+	err = xml.Unmarshal(val, &v)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return v
-}
-
-//func XmlSec1Verify
-//To validate a credential:
-//
-//Credentials must validate against the credential schema.
-//The credential signature must be valid, as per the ​XML Digital Signature standard.
-//All contained certificates must be valid and trusted (trace back through all valid/trusted certificates to a trusted root certificate), and follow the GENI Certificate restrictions (see GeniApiCertificates).
-//The expiration of the credential and all contained certificates must be later than the current time.
-//All contained URNs must follow the GENI URN rules.
-//The same rules apply to any parent credential, if the credential is delegated (and on up the delegation chain).
-//For non delegated credentials, or for the root credential of a delegated credential (all the way back up any delegation chain), the signer must have authority over the target. Specifically, the credential issuer must have a URN indicating it is of type authority, and it must be the toplevelauthority or a parent authority of the authority named in the credential's target URN. See the URN rules page for details about authorities.
-//For delegated credentials, the signer of the credential must be the subject (owner) of the parent credential), until you get to the root credential (no parent), in which case the above rule applies.
-
-func (c Credential) Validate() bool {
-	// TODO: Accept path to PEMs
-	cmd := exec.Command(
-		"xmlsec1",
-		"--verify",
-		"--trusted-pem",
-		"/Users/maxmouchet/Clones/github.com/EdgeNet-project/fed4fire/trusted_roots/ilabt.imec.be.pem",
-		"-",
-	)
-	stdin, err := cmd.StdinPipe()
-	utils.Check(err)
-
-	io.WriteString(stdin, html.UnescapeString(c.Value))
-	stdin.Close()
-
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Printf("%s\n", out)
-	return true
+	// 3. Verify the embedded certificates
+	// TODO
+	// TODO: Handle delegation?
+	// For non delegated credentials, or for the root credential of a delegated credential (all the way back up any delegation chain), the signer must have authority over the target. Specifically, the credential issuer must have a URN indicating it is of type authority, and it must be the toplevelauthority or a parent authority of the authority named in the credential's target URN. See the URN rules page for details about authorities.
+	// For delegated credentials, the signer of the credential must be the subject (owner) of the parent credential), until you get to the root credential (no parent), in which case the above rule applies.
+	return &v.Credential, nil
 }
 
 type Options struct {

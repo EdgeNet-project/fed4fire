@@ -1,6 +1,11 @@
-FROM golang:1.17.1 as builder
+FROM golang:1.17 as builder
 ARG GCFLAGS=""
 WORKDIR /go/src/app
+
+RUN apt-get update \
+    && apt-get install --no-install-recommends --yes \
+        libxmlsec1-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 RUN go get github.com/go-delve/delve/cmd/dlv
 
@@ -12,7 +17,14 @@ ADD . .
 RUN --mount=type=cache,target=/root/.cache/go-build \
     go build -gcflags="$GCFLAGS" -o /go/bin/app
 
-FROM gcr.io/distroless/base
+FROM debian:11
+
+RUN apt-get update \
+    && apt-get install --no-install-recommends --yes \
+        libxmlsec1 libxmlsec1-openssl \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY --from=builder /go/bin/app /
 COPY --from=builder /go/bin/dlv /
+
 ENTRYPOINT ["/app"]

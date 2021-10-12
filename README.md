@@ -23,6 +23,8 @@ go run main.go \
 ## TODO
 - Kube deployment
 - Document why we need nginx and how it works
+- Document why we need xmlsec1 and openssl bindings
+- `env CGO_CFLAGS="-I/opt/homebrew/opt/openssl@1.1/include" CGO_LDFLAGS="-L/opt/homebrew/opt/openssl@1.1/lib" go get github.com/libp2p/go-openssl`
 
 ### Using jFed automated testing
 

@@ -1,14 +1,11 @@
 package service
 
 import (
-	"bytes"
-	"encoding/pem"
 	"encoding/xml"
 	"fmt"
 	"github.com/EdgeNet-project/fed4fire/pkg/sfa"
 	"html"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
@@ -61,34 +58,37 @@ func (v *AllocateReply) SetAndLogError(err error, msg string, keysAndValues ...i
 // This method returns a listing and description of the resources reserved for the slice by this operation, in the form of a manifest RSpec.
 // https://groups.geni.net/geni/wiki/GAPI_AM_API_V3#Allocate
 func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateReply) error {
+	// TODO: Return identifier instead? And move to this package?
+	userUrn, err := utils.GetUserUrnFromHeader(r.Header)
+	if err != nil {
+		reply.SetAndLogError(err, "Failed to decoded user URN")
+	}
 	var matchingCredential *sfa.Credential
-	dec, err := url.QueryUnescape(r.Header.Get("X-Fed4Fire-Certificate"))
-	block, _ := pem.Decode([]byte(dec))
 	for _, credential := range args.Credentials {
-		signed := credential.SFA().Credential
-		fmt.Println(signed.OwnerGID)
-		block2, _ := pem.Decode([]byte(signed.OwnerGID))
-		if bytes.Equal(block.Bytes, block2.Bytes) && signed.TargetURN == args.SliceURN {
-			matchingCredential = &signed
+		validated, err := credential.ValidatedSFA(s.TrustedCertificates)
+		if err != nil {
+			reply.SetAndLogError(err, "Failed to validate credential")
+			return nil
+		}
+		if validated.OwnerURN == userUrn && validated.TargetURN == args.SliceURN {
+			matchingCredential = validated
 			break
 		}
 	}
 	if matchingCredential == nil {
-		reply.SetAndLogError(fmt.Errorf("no matching credentials for slice URN"), "Invalid credentials")
+		reply.SetAndLogError(fmt.Errorf("no matching credentials for user and slice URN"), "Invalid credentials")
 		return nil
 	}
-	// TODO: Service parameter
-	// TODO: Check owner URN against client auth?
-	//if !s.Insecure && r.TLS.PeerCertificates ...
-	// TODO: Check target URN for slice
-	credential := args.Credentials[0].SFA().Credential
 
-	sliceIdentifier, err := identifiers.Parse(args.SliceURN)
+	// TODO: Move to credential package? TargetIdentifier(), ...
+	// TODO: Use sliceUrn instead (in case of delegation?)
+	sliceIdentifier, err := identifiers.Parse(matchingCredential.TargetURN)
 	if err != nil {
 		reply.SetAndLogError(err, "Failed to parse slice URN")
 	}
 
-	userIdentifier, err := identifiers.Parse(credential.TargetURN)
+	// TODO: Use userUrn instead (in case of delegation?)
+	userIdentifier, err := identifiers.Parse(matchingCredential.OwnerURN)
 	if err != nil {
 		reply.SetAndLogError(err, "Failed to parse user URN")
 		return nil
