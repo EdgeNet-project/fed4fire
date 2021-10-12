@@ -1,3 +1,4 @@
+// Package service implements the XML-RPC methods specified by the AM API.
 package service
 
 import (
@@ -24,6 +25,7 @@ type Service struct {
 	NamespaceCpuLimit    string
 	NamespaceMemoryLimit string
 	ParentNamespace      string
+	Insecure             bool
 	EdgenetClient        versioned.Interface
 	KubernetesClient     kubernetes.Interface
 }

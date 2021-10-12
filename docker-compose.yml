@@ -1,0 +1,38 @@
+version: "3"
+
+services:
+  am:
+    build:
+      context: .
+      args:
+        GCFLAGS: "all=-N -l"
+    command:
+      - --accept-multiclient
+      - --api-version=2
+      - --headless=true
+      - --listen=:40000
+      - exec
+      - --continue
+      - /app
+      - --
+      - -authorityName=edge-net.org
+      - -containerImage=ubuntu2004:docker.io/library/ubuntu:20.04
+      - -kubeconfig=/kubeconfig.cfg
+      - -parentNamespace=lip6-lab
+      - -serverAddr=0.0.0.0:9443
+      - -trustedRootCert=/trusted_roots/ilabt.imec.be.pem
+    entrypoint: /dlv
+    ports:
+      - "40000:40000"
+    volumes:
+      - ./trusted_roots:/trusted_roots:ro
+      - ~/.kube/edgenet-kubeconfig.cfg:/kubeconfig.cfg:ro
+  nginx:
+    image: nginx:stable
+    ports:
+      - "9443:9443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./self_signed/server.pem:/etc/nginx/server.pem:ro
+      - ./self_signed/server.key:/etc/nginx/server.key:ro
+      - ./trusted_roots/ilabt.imec.be.pem:/etc/nginx/trusted.pem:ro

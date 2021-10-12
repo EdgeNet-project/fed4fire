@@ -20,6 +20,10 @@ go run main.go \
   -trustedRootCert self_signed/ca-client.pem
 ```
 
+## TODO
+- Kube deployment
+- Document why we need nginx and how it works
+
 ### Using jFed automated testing
 
 #### Add local AM using jFed scanner

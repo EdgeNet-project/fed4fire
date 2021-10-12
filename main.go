@@ -1,9 +1,10 @@
 // This package implements the Fed4Fire Aggregate Manager API for EdgeNet/Kubernetes.
+//
+// Specifically, it implements the GENI AM API v3 as specified in
+// https://groups.geni.net/geni/wiki/GAPI_AM_API_V3.
 package main
 
 import (
-	"crypto/tls"
-	"crypto/x509"
 	"flag"
 	"fmt"
 	"github.com/EdgeNet-project/edgenet/pkg/generated/clientset/versioned"
@@ -12,7 +13,6 @@ import (
 	"github.com/EdgeNet-project/fed4fire/pkg/utils"
 	"github.com/gorilla/rpc"
 	"github.com/maxmouchet/gorilla-xmlrpc/xml"
-	"io/ioutil"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog/v2"
@@ -29,11 +29,8 @@ var containerMemoryLimit string
 var namespaceCpuLimit string
 var namespaceMemoryLimit string
 var kubeconfigFile string
-var insecure bool
 var parentNamespace string
 var serverAddr string
-var serverCertFile string
-var serverKeyFile string
 var trustedRootCerts utils.ArrayFlags
 
 func logRequest(i *rpc.RequestInfo) {
@@ -43,6 +40,7 @@ func logRequest(i *rpc.RequestInfo) {
 		"method", i.Request.Method,
 		"uri", i.Request.RequestURI,
 		"rpc-method", i.Method,
+		"subject-dn", i.Request.Header.Get("X-Fed4Fire-DN"),
 		"user-agent", i.Request.UserAgent(),
 	)
 }
@@ -57,11 +55,8 @@ func main() {
 	flag.StringVar(&namespaceCpuLimit, "namespaceCpuLimit", "8", "maximum amount of CPU that can be used by a slice subnamespace")
 	flag.StringVar(&namespaceMemoryLimit, "namespaceMemoryLimit", "8Gi", "maximum amount of memory that can be used by a slice subnamespace")
 	flag.StringVar(&kubeconfigFile, "kubeconfig", "", "path to the kubeconfig file used to communicate with the Kubernetes API")
-	flag.BoolVar(&insecure, "insecure", false, "disable TLS client authentication")
 	flag.StringVar(&parentNamespace, "parentNamespace", "", "kubernetes namespaces in which to create slice subnamespaces")
 	flag.StringVar(&serverAddr, "serverAddr", "localhost:9443", "host:port on which to listen")
-	flag.StringVar(&serverCertFile, "serverCert", "", "path to the server TLS certificate")
-	flag.StringVar(&serverKeyFile, "serverKey", "", "path to the server TLS key")
 	flag.Var(&trustedRootCerts, "trustedRootCert", "path to a trusted root certificate for authenticating user; can be specified multiple times")
 	flag.Parse()
 
@@ -70,13 +65,13 @@ func main() {
 		os.Exit(0)
 	}
 
-	caCertPool := x509.NewCertPool()
-	for _, file := range trustedRootCerts {
-		caCert, err := ioutil.ReadFile(file)
-		utils.Check(err)
-		caCertPool.AppendCertsFromPEM(caCert)
-		klog.InfoS("Loaded trusted certificate", "file", file)
-	}
+	//caCertPool := x509.NewCertPool()
+	//for _, file := range trustedRootCerts {
+	//	caCert, err := ioutil.ReadFile(file)
+	//	utils.Check(err)
+	//	caCertPool.AppendCertsFromPEM(caCert)
+	//	klog.InfoS("Loaded trusted certificate", "file", file)
+	//}
 
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfigFile)
 	utils.Check(err)
@@ -121,21 +116,11 @@ func main() {
 	RPC.RegisterCodec(xmlrpcCodec, "text/xml")
 	utils.Check(RPC.RegisterService(s, ""))
 
-	tlsConfig := &tls.Config{
-		ClientCAs:  caCertPool,
-		ClientAuth: tls.RequireAndVerifyClientCert,
-	}
-	if insecure {
-		tlsConfig.ClientAuth = tls.NoClientCert
-		klog.InfoS("Disabled TLS client authentication")
-	}
-
 	server := &http.Server{
-		Addr:      serverAddr,
-		Handler:   RPC,
-		TLSConfig: tlsConfig,
+		Addr:    serverAddr,
+		Handler: RPC,
 	}
 
 	klog.InfoS("Listening", "address", serverAddr)
-	utils.Check(server.ListenAndServeTLS(serverCertFile, serverKeyFile))
+	utils.Check(server.ListenAndServe())
 }
