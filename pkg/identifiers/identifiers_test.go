@@ -6,33 +6,38 @@ import (
 )
 
 func TestMustParse(t *testing.T) {
-	type args struct {
-		s string
-	}
 	tests := []struct {
-		name string
-		args args
+		urn  string
 		want Identifier
 	}{
-		{"basic1", args{"urn:publicid:IDN+plc:princeton+authority+sa"}, Identifier{
-			Authorities:  []string{"plc", "princeton"},
-			ResourceType: "authority",
-			ResourceName: "sa",
-		}},
-		{"basic2", args{"urn:publicid:IDN+gcf:gpo:gpolab+user+joe"}, Identifier{
-			Authorities:  []string{"gcf", "gpo", "gpolab"},
-			ResourceType: "user",
-			ResourceName: "joe",
-		}},
-		{"basic3", args{"urn:publicid:IDN+gcf:gpo:gpolab+node+switch+1+port+2"}, Identifier{
-			Authorities:  []string{"gcf", "gpo", "gpolab"},
-			ResourceType: "node",
-			ResourceName: "switch+1+port+2",
-		}},
+		{
+			"urn:publicid:IDN+plc:princeton+authority+sa",
+			Identifier{
+				Authorities:  []string{"plc", "princeton"},
+				ResourceType: "authority",
+				ResourceName: "sa",
+			},
+		},
+		{
+			"urn:publicid:IDN+gcf:gpo:gpolab+user+joe",
+			Identifier{
+				Authorities:  []string{"gcf", "gpo", "gpolab"},
+				ResourceType: "user",
+				ResourceName: "joe",
+			},
+		},
+		{
+			"urn:publicid:IDN+gcf:gpo:gpolab+node+switch+1+port+2",
+			Identifier{
+				Authorities:  []string{"gcf", "gpo", "gpolab"},
+				ResourceType: "node",
+				ResourceName: "switch+1+port+2",
+			},
+		},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := MustParse(tt.args.s); !reflect.DeepEqual(got, tt.want) {
+		t.Run(tt.urn, func(t *testing.T) {
+			if got := MustParse(tt.urn); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("MustParse() = %v, want %v", got, tt.want)
 			}
 		})
@@ -40,84 +45,29 @@ func TestMustParse(t *testing.T) {
 }
 
 func TestIdentifier_Copy(t *testing.T) {
-	type fields struct {
-		Authorities  []string
-		ResourceType string
-		ResourceName string
+	id := Identifier{
+		Authorities:  []string{"gcf", "gpo", "gpolab"},
+		ResourceType: "node",
+		ResourceName: "switch+1+port+2",
 	}
-	type args struct {
-		resourceType string
-		resourceName string
+	want := Identifier{
+		Authorities:  []string{"gcf", "gpo", "gpolab"},
+		ResourceType: "authority",
+		ResourceName: "test",
 	}
-	tests := []struct {
-		name   string
-		fields fields
-		args   args
-		want   Identifier
-	}{
-		{
-			"basic1",
-			fields{
-				Authorities:  []string{"gcf", "gpo", "gpolab"},
-				ResourceType: "node",
-				ResourceName: "switch+1+port+2",
-			},
-			args{"authority", "test"},
-			Identifier{
-				Authorities:  []string{"gcf", "gpo", "gpolab"},
-				ResourceType: "authority",
-				ResourceName: "test",
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			v := Identifier{
-				Authorities:  tt.fields.Authorities,
-				ResourceType: tt.fields.ResourceType,
-				ResourceName: tt.fields.ResourceName,
-			}
-			if got := v.Copy(tt.args.resourceType, tt.args.resourceName); !reflect.DeepEqual(
-				got,
-				tt.want,
-			) {
-				t.Errorf("Copy() = %v, want %v", got, tt.want)
-			}
-		})
+	if got := id.Copy("authority", "test"); !reflect.DeepEqual(got, want) {
+		t.Errorf("Copy() = %v, want %v", got, want)
 	}
 }
 
 func TestIdentifier_URN(t *testing.T) {
-	type fields struct {
-		Authorities  []string
-		ResourceType string
-		ResourceName string
+	id := Identifier{
+		Authorities:  []string{"gcf", "gpo", "gpolab"},
+		ResourceType: "node",
+		ResourceName: "switch+1+port+2",
 	}
-	tests := []struct {
-		name   string
-		fields fields
-		want   string
-	}{
-		{
-			"basic1",
-			fields{
-				Authorities:  []string{"gcf", "gpo", "gpolab"},
-				ResourceType: "node",
-				ResourceName: "switch+1+port+2",
-			},
-			"urn:publicid:IDN+gcf:gpo:gpolab+node+switch+1+port+2",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			v := &Identifier{
-				Authorities:  tt.fields.Authorities,
-				ResourceType: tt.fields.ResourceType,
-				ResourceName: tt.fields.ResourceName,
-			}
-			if got := v.URN(); got != tt.want {
-				t.Errorf("URN() = %v, want %v", got, tt.want)
-			}
-		})
+	want := "urn:publicid:IDN+gcf:gpo:gpolab+node+switch+1+port+2"
+	if got := id.URN(); got != want {
+		t.Errorf("URN() = %v, want %v", got, want)
 	}
 }

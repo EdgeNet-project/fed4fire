@@ -108,11 +108,11 @@ func FindMatchingCredential(
 		if err != nil {
 			return nil, err
 		}
-		ownerId, err := validated.OwnerIdentifier()
+		ownerId, err := identifiers.Parse(validated.OwnerURN)
 		if err != nil {
 			return nil, err
 		}
-		targetId, err := validated.TargetIdentifier()
+		targetId, err := identifiers.Parse(validated.TargetURN)
 		if err != nil {
 			return nil, err
 		}
