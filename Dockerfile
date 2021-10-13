@@ -2,11 +2,6 @@ FROM golang:1.17 as builder
 ARG GCFLAGS=""
 WORKDIR /go/src/app
 
-RUN apt-get update \
-    && apt-get install --no-install-recommends --yes \
-        libxmlsec1-dev \
-    && rm -rf /var/lib/apt/lists/*
-
 RUN go get github.com/go-delve/delve/cmd/dlv
 
 ADD go.mod go.mod

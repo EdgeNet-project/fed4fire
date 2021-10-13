@@ -4,12 +4,12 @@ package service
 import (
 	"encoding/xml"
 	"fmt"
+	"github.com/EdgeNet-project/fed4fire/pkg/xmlsec1"
 	"html"
 
 	"github.com/EdgeNet-project/edgenet/pkg/generated/clientset/versioned"
 	"github.com/EdgeNet-project/fed4fire/pkg/identifiers"
 	"github.com/EdgeNet-project/fed4fire/pkg/sfa"
-	"github.com/crewjam/go-xmlsec"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -54,7 +54,7 @@ func (c Credential) ValidatedSFA(trustedCertificates [][]byte) (*sfa.Credential,
 	}
 	val := []byte(html.UnescapeString(c.Value))
 	// 1. Verify the credential signature
-	err := xmlsec.VerifyTrusted(trustedCertificates, val, xmlsec.SignatureOptions{})
+	err := xmlsec1.Verify(trustedCertificates, val)
 	if err != nil {
 		return nil, err
 	}

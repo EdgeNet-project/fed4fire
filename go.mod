@@ -4,8 +4,6 @@ go 1.16
 
 require (
 	github.com/EdgeNet-project/edgenet v1.0.0-alpha.1.0.20211001134540-4f3ecfdee11c
-	github.com/crewjam/errset v0.0.0-20160219153700-f78d65de925c // indirect
-	github.com/crewjam/go-xmlsec v0.0.0-20200414151428-d2b1a58f7262
 	github.com/go-logr/logr v1.1.0 // indirect
 	github.com/google/go-cmp v0.5.6 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
