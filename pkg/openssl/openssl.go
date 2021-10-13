@@ -7,6 +7,8 @@ import (
 	"strings"
 )
 
+// TODO: Allow to verify certificate chain.
+// VerifyChain? or rename certificate to certificateChain?
 func Verify(trustedCertificates [][]byte, certificate []byte) error {
 	trustedFileNames, err := utils.WriteTempFilesPem(
 		trustedCertificates,
@@ -32,7 +34,7 @@ func Verify(trustedCertificates [][]byte, certificate []byte) error {
 		return fmt.Errorf("%w: %s", err, out)
 	}
 	if strings.TrimSpace(string(out)) != fmt.Sprintf("%s: OK", certificateFileName) {
-		return fmt.Errorf("verification failed:%s", out)
+		return fmt.Errorf("verification failed: %s", out)
 	}
 	return nil
 }
