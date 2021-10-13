@@ -11,7 +11,7 @@ const (
 )
 
 // WriteTempFile writes data to a temporary file and returns its name.
-// The file will not be deleted automatically.
+// It is the caller's responsibility to remove the file when it is no longer needed.
 func WriteTempFile(data []byte) (string, error) {
 	file, err := os.CreateTemp("", "")
 	if err != nil {
@@ -31,7 +31,7 @@ func WriteTempFile(data []byte) (string, error) {
 }
 
 // WriteTempFiles writes data to temporary files and returns their names.
-// The files will not be deleted automatically.
+// It is the caller's responsibility to remove the files when they are no longer needed.
 func WriteTempFiles(data [][]byte) ([]string, error) {
 	names := make([]string, 0)
 	for _, d := range data {
@@ -46,14 +46,14 @@ func WriteTempFiles(data [][]byte) ([]string, error) {
 }
 
 // WriteTempFilePem writes PEM encoded data to a temporary file and return its name.
-// The file will not be deleted automatically.
+// It is the caller's responsibility to remove the file when it is no longer needed.
 func WriteTempFilePem(data []byte, pemType string) (string, error) {
 	b := pem.EncodeToMemory(&pem.Block{Type: pemType, Bytes: data})
 	return WriteTempFile(b)
 }
 
 // WriteTempFilesPem write PEM encoded data to temporary files and returns their names.
-// The files will not be deleted automatically.
+// It is the caller's responsibility to remove the files when they are no longer needed.
 func WriteTempFilesPem(data [][]byte, pemType string) ([]string, error) {
 	bs := make([][]byte, 0)
 	for _, d := range data {
