@@ -10,6 +10,7 @@ import (
 type SignedCredential struct {
 	XMLName    xml.Name   `xml:"signed-credential"`
 	Credential Credential `xml:"credential"`
+	// TODO: Add Signature infos
 }
 
 type Credential struct {
@@ -34,6 +35,26 @@ type Privilege struct {
 	Name        string   `xml:"name"`
 	CanDelegate bool     `xml:"can_delegate"`
 }
+
+//type Signature struct {
+//	XMLName xml.Name `xml:"Signature"`
+//	Id      string   `xml:"id,attr"`
+//}
+//
+//type SignedInfo struct {
+//	XMLName                xml.Name               `xml:"SignedInfo"`
+//	CanonicalizationMethod CanonicalizationMethod `xml:"CanonicalizationMethod"`
+//}
+//
+//type CanonicalizationMethod struct {
+//	XMLName   xml.Name `xml:"CanonicalizationMethod"`
+//	Algorithm string   `xml:"Algorithm,attr"`
+//}
+//
+//type SignatureMethod struct {
+//	XMLName   xml.Name `xml:"SignatureMethod"`
+//	Algorithm string   `xml:"Algorithm,attr"`
+//}
 
 func (c Credential) OwnerIdentifier() (*identifiers.Identifier, error) {
 	return identifiers.Parse(c.OwnerURN)
