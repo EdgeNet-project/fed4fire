@@ -52,6 +52,12 @@ func WriteTempFilePem(data []byte, pemType string) (string, error) {
 	return WriteTempFile(b)
 }
 
+// WriteTempFilePems writes multiple PEM encoded data to a temporary file and return its name.
+// It is the caller's responsibility to remove the file when it is no longer needed.
+func WriteTempFilePems(data [][]byte, pemType string) (string, error) {
+	return WriteTempFile(PEMEncodeMany(data, pemType))
+}
+
 // WriteTempFilesPem write PEM encoded data to temporary files and returns their names.
 // It is the caller's responsibility to remove the files when they are no longer needed.
 func WriteTempFilesPem(data [][]byte, pemType string) ([]string, error) {

@@ -4,8 +4,11 @@ package service
 import (
 	"encoding/xml"
 	"fmt"
-	"github.com/EdgeNet-project/fed4fire/pkg/xmlsec1"
 	"html"
+
+	"github.com/EdgeNet-project/fed4fire/pkg/openssl"
+	"github.com/EdgeNet-project/fed4fire/pkg/utils"
+	"github.com/EdgeNet-project/fed4fire/pkg/xmlsec1"
 
 	"github.com/EdgeNet-project/edgenet/pkg/generated/clientset/versioned"
 	"github.com/EdgeNet-project/fed4fire/pkg/identifiers"
@@ -65,7 +68,14 @@ func (c Credential) ValidatedSFA(trustedCertificates [][]byte) (*sfa.Credential,
 		return nil, err
 	}
 	// 3. Verify the embedded certificates
-	// TODO
+	err = openssl.Verify(trustedCertificates, utils.PEMDecodeMany([]byte(v.Credential.OwnerGID)))
+	if err != nil {
+		return nil, err
+	}
+	err = openssl.Verify(trustedCertificates, utils.PEMDecodeMany([]byte(v.Credential.TargetGID)))
+	if err != nil {
+		return nil, err
+	}
 	// TODO: Handle delegation?
 	// For non delegated credentials, or for the root credential of a delegated credential (all the way back up any delegation chain), the signer must have authority over the target. Specifically, the credential issuer must have a URN indicating it is of type authority, and it must be the toplevelauthority or a parent authority of the authority named in the credential's target URN. See the URN rules page for details about authorities.
 	// For delegated credentials, the signer of the credential must be the subject (owner) of the parent credential), until you get to the root credential (no parent), in which case the above rule applies.

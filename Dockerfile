@@ -16,7 +16,7 @@ FROM debian:11
 
 RUN apt-get update \
     && apt-get install --no-install-recommends --yes \
-        libxmlsec1 libxmlsec1-openssl \
+      openssl xmlsec1 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /go/bin/app /

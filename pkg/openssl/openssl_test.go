@@ -5,10 +5,11 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"github.com/EdgeNet-project/fed4fire/pkg/utils"
 	"math/big"
 	"testing"
 	"time"
+
+	"github.com/EdgeNet-project/fed4fire/pkg/utils"
 )
 
 func TestVerify(t *testing.T) {
@@ -34,11 +35,11 @@ func TestVerify(t *testing.T) {
 		privateKey,
 	)
 	utils.Check(err)
-	err = Verify([][]byte{derBytes}, derBytes)
+	err = Verify([][]byte{derBytes}, [][]byte{derBytes})
 	if err != nil {
 		t.Errorf("Verify() = %s; want nil", err)
 	}
-	err = Verify([][]byte{}, derBytes)
+	err = Verify([][]byte{}, [][]byte{derBytes})
 	if err == nil {
 		t.Errorf("Verify() = nil; want error")
 	}

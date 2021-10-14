@@ -13,6 +13,7 @@ import (
 	"github.com/EdgeNet-project/fed4fire/pkg/utils"
 	"github.com/gorilla/rpc"
 	"github.com/maxmouchet/gorilla-xmlrpc/xml"
+	"io/ioutil"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog/v2"
@@ -31,7 +32,7 @@ var namespaceMemoryLimit string
 var kubeconfigFile string
 var parentNamespace string
 var serverAddr string
-var trustedRootCerts utils.ArrayFlags
+var trustedCerts utils.ArrayFlags
 
 func beforeFunc(i *rpc.RequestInfo) {
 	escapedCert := i.Request.Header.Get(utils.HttpHeaderCertificate)
@@ -64,7 +65,7 @@ func main() {
 	flag.StringVar(&kubeconfigFile, "kubeconfig", "", "path to the kubeconfig file used to communicate with the Kubernetes API")
 	flag.StringVar(&parentNamespace, "parentNamespace", "", "kubernetes namespaces in which to create slice subnamespaces")
 	flag.StringVar(&serverAddr, "serverAddr", "localhost:9443", "host:port on which to listen")
-	flag.Var(&trustedRootCerts, "trustedRootCert", "path to a trusted root certificate for authenticating user; can be specified multiple times")
+	flag.Var(&trustedCerts, "trustedCert", "path to a trusted certificate for authenticating users; can be specified multiple times")
 	flag.Parse()
 
 	if showHelp {
@@ -94,6 +95,13 @@ func main() {
 		klog.InfoS("Parsed container image name", "name", arr[0], "image", arr[1])
 	}
 
+	trustedCerts_ := make([][]byte, 0)
+	for _, s := range trustedCerts {
+		b, err := ioutil.ReadFile(s)
+		utils.Check(err)
+		trustedCerts_ = append(trustedCerts_, utils.PEMDecodeMany(b)...)
+	}
+
 	s := &service.Service{
 		// TODO: This is invalid with the reverse proxy, add absoluteUrl param?
 		// and rename serverAddr to listenAddr?
@@ -105,6 +113,7 @@ func main() {
 		NamespaceCpuLimit:    namespaceCpuLimit,
 		NamespaceMemoryLimit: namespaceMemoryLimit,
 		ParentNamespace:      parentNamespace,
+		TrustedCertificates:  trustedCerts_,
 		EdgenetClient:        edgeclient,
 		KubernetesClient:     kubeclient,
 	}

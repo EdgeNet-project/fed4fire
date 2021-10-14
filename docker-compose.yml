@@ -20,7 +20,7 @@ services:
       - -kubeconfig=/kubeconfig.cfg
       - -parentNamespace=lip6-lab
       - -serverAddr=0.0.0.0:9443
-      - -trustedRootCert=/trusted_roots/ilabt.imec.be.pem
+      - -trustedCert=/trusted_roots/ilabt.imec.be.pem
     entrypoint: /dlv
     ports:
       - "40000:40000"
