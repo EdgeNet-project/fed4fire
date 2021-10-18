@@ -4,6 +4,7 @@ import (
 	"encoding/pem"
 )
 
+// PEMDecodeMany decodes multiple PEM encoded blocks from a single byte slice.
 func PEMDecodeMany(pemEncoded []byte) [][]byte {
 	data := make([][]byte, 0)
 	rest := pemEncoded
@@ -18,6 +19,7 @@ func PEMDecodeMany(pemEncoded []byte) [][]byte {
 	return data
 }
 
+// PEMEncodeMany PEM encodes multiple byte slices to a single byte slice.
 func PEMEncodeMany(data [][]byte, pemType string) []byte {
 	pemEncoded := make([]byte, 0)
 	for _, d := range data {

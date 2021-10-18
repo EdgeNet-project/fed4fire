@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/EdgeNet-project/fed4fire/pkg/naming"
+
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/EdgeNet-project/fed4fire/pkg/identifiers"
@@ -36,6 +38,9 @@ func (v *DeleteReply) SetAndLogError(err error, msg string, keysAndValues ...int
 // No further AM API operations may be performed on slivers that have been deleted.
 // https://groups.geni.net/geni/wiki/GAPI_AM_API_V3#Delete
 func (s *Service) Delete(r *http.Request, args *DeleteArgs, reply *DeleteReply) error {
+	// Delete moves 1 or more slivers from either state 2 or 3 (geni_allocated or geni_provisioned),
+	// back to state 1 (geni_unallocated).
+	// https://groups.geni.net/geni/wiki/GAPI_AM_API_V3/CommonConcepts#SliverAllocationStates
 	//deploymentsClient :=
 	// TODO: Check credentials
 	// TODO: Check permissions/slice authority
@@ -48,7 +53,7 @@ func (s *Service) Delete(r *http.Request, args *DeleteArgs, reply *DeleteReply) 
 		}
 		//TODO: Handle slice and slivers
 		if identifier.ResourceType == identifiers.ResourceTypeSlice {
-			subnamespaceName, err := subnamespaceNameForSlice(*identifier)
+			subnamespaceName, err := naming.SubnamespaceName(*identifier)
 			if err != nil {
 				reply.SetAndLogError(
 					err,

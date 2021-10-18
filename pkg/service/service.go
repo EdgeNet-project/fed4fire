@@ -52,7 +52,7 @@ type Sliver struct {
 }
 
 func (c Credential) ValidatedSFA(trustedCertificates [][]byte) (*sfa.Credential, error) {
-	if c.Type != "geni_sfa" {
+	if c.Type != geniCredentialTypeSfa {
 		return nil, fmt.Errorf("credential type is not geni_sfa")
 	}
 	val := []byte(html.UnescapeString(c.Value))
@@ -76,6 +76,7 @@ func (c Credential) ValidatedSFA(trustedCertificates [][]byte) (*sfa.Credential,
 	if err != nil {
 		return nil, err
 	}
+	// TODO: Check expiration.
 	// TODO: Handle delegation?
 	// For non delegated credentials, or for the root credential of a delegated credential (all the way back up any delegation chain), the signer must have authority over the target. Specifically, the credential issuer must have a URN indicating it is of type authority, and it must be the toplevelauthority or a parent authority of the authority named in the credential's target URN. See the URN rules page for details about authorities.
 	// For delegated credentials, the signer of the credential must be the subject (owner) of the parent credential), until you get to the root credential (no parent), in which case the above rule applies.
@@ -141,11 +142,12 @@ const (
 
 // Names for Kubernetes objects labels and annotations.
 const (
-	fed4fireClientId = "fed4fire.eu/client-id"
-	fed4fireExpires  = "fed4fire.eu/expires"
-	fed4fireSlice    = "fed4fire.eu/slice"
-	fed4fireSliver   = "fed4fire.eu/sliver"
-	fed4fireUser     = "fed4fire.eu/user"
+	fed4fireClientId   = "fed4fire.eu/client-id"
+	fed4fireExpires    = "fed4fire.eu/expires"
+	fed4fireSlice      = "fed4fire.eu/slice"
+	fed4fireSliver     = "fed4fire.eu/sliver"
+	fed4fireSliverName = "fed4fire.eu/sliver-name"
+	fed4fireUser       = "fed4fire.eu/user"
 )
 
 // https://groups.geni.net/geni/attachment/wiki/GAPI_AM_API_V3/CommonConcepts/geni-error-codes.xml
@@ -221,5 +223,5 @@ const (
 // https://groups.geni.net/geni/wiki/GAPI_AM_API_V3/CommonConcepts#credentials
 const (
 	geniCredentialTypeAbac = "geni_abac"
-	geniCredentialTypeSfa  = "geny_sfa"
+	geniCredentialTypeSfa  = "geni_sfa"
 )

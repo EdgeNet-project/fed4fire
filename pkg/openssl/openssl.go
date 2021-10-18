@@ -8,8 +8,6 @@ import (
 	"github.com/EdgeNet-project/fed4fire/pkg/utils"
 )
 
-// TODO: Allow to verify certificate chain.
-// VerifyChain? or rename certificate to certificateChain?
 func Verify(trustedCertificates [][]byte, certificateChain [][]byte) error {
 	trustedFileNames, err := utils.WriteTempFilesPem(
 		trustedCertificates,

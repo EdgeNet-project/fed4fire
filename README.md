@@ -42,6 +42,14 @@ java --module-path ~/Downloads/javafx-sdk-17.0.0.1/lib/ -cp "*:lib/*" \
 
 TODO...
 
+## Mapping Fed4Fire concepts to Kubernetes
+
+- Slice: namespace (here specifically EdgeNet subnamespaces)
+- Sliver: deployment
+
+Naming: first 8 bytes of a SHA512 hash in a hexadecimal string.
+This allows to create objects with names that are valid in the GENI spec, but not in Kubernetes which mostly allows only alphanumeric chars.
+
 ## [AM API requirements](https://doc.fed4fire.eu/testbed_owner/addingtestbed.html#requirements)
 
 - A server to run the AM software on.

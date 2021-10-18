@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"html"
 	"net/http"
-	"strings"
 	"time"
+
+	"github.com/EdgeNet-project/fed4fire/pkg/naming"
 
 	"github.com/EdgeNet-project/fed4fire/pkg/utils"
 
@@ -53,11 +54,39 @@ func (v *AllocateReply) SetAndLogError(err error, msg string, keysAndValues ...i
 	return nil
 }
 
+// Some things to take into account in request RSpecs:
+// - Each node will have exactly one sliver_type in a request.
+// - Each sliver_type will have zero or one disk_image elements.
+//   If your testbed requires disk_image or does not support it,
+//   it should handle bad requests RSpecs with the correct error.
+// - The exclusive element is specified for each node in the request.
+//   Your testbed should check if the specified value (in combination with the sliver_type) is supported,
+//   and return the correct error if not.
+// - The request RSpec might contain links that have a component_manager element that matches your AM.
+//   If your AM does not support links, it should return the correct error.
+// https://doc.fed4fire.eu/testbed_owner/rspec.html#request-rspec
+
+// Some information will be in a request RSpec, that needs to be ignored and copied to the manifest RSpec unaltered.
+// This is important to do correctly.
+// - A request RSpec can contain nodes that have a component_manager_id set to a different AM.
+//   You need to ignore these nodes, and copy them to the manifest RSpec unaltered.
+// - A request RSpec can contain links that do not have a component_manager matching your AM
+//   (links have multiple component_manager_id elements!).
+//   You need to ignore these links, and copy them to the manifest RSpec unaltered.
+// - A request RSpec can contain XML extensions in nodes, links, services, or directly in the rspec element.
+//   Some of these the AM will not know.
+//   It has to ignore these, and preferably also pass them unaltered to the manifest RSpec.
+// https://doc.fed4fire.eu/testbed_owner/rspec.html#request-rspec
+
 // Allocate allocates resources as described in a request RSpec argument to a slice with the named URN.
 // On success, one or more slivers are allocated, containing resources satisfying the request, and assigned to the given slice.
 // This method returns a listing and description of the resources reserved for the slice by this operation, in the form of a manifest RSpec.
 // https://groups.geni.net/geni/wiki/GAPI_AM_API_V3#Allocate
 func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateReply) error {
+	// Allocate moves 1 or more slivers from geni_unallocated (state 1) to geni_allocated (state 2).
+	// This method can be described as creating an instance of the state machine for each sliver.
+	// If the aggregate cannot fully satisfy the request, the whole request fails.
+	// https://groups.geni.net/geni/wiki/GAPI_AM_API_V3/CommonConcepts#SliverAllocationStates
 	userIdentifier, err := identifiers.Parse(r.Header.Get(utils.HttpHeaderUser))
 	if err != nil {
 		return reply.SetAndLogError(err, "Failed to parse user URN")
@@ -66,42 +95,48 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 	if err != nil {
 		return reply.SetAndLogError(err, "Failed to parse slice URN")
 	}
-	_, err = FindMatchingCredential(
+	credential, err := FindMatchingCredential(
 		*userIdentifier,
 		*sliceIdentifier,
 		args.Credentials,
 		s.TrustedCertificates,
 	)
-	if err != nil {
+	if err == nil {
+		klog.InfoS(
+			"Found matching credential",
+			"ownerUrn",
+			credential.OwnerURN,
+			"targetUrn",
+			credential.TargetURN,
+		)
+	} else {
 		return reply.SetAndLogError(err, "Invalid credentials")
 	}
 
+	// TODO: Implement RSpec passthrough + node selection.
 	requestRspec := rspec.Rspec{}
 	err = xml.Unmarshal([]byte(html.UnescapeString(args.Rspec)), &requestRspec)
 	if err != nil {
 		return reply.SetAndLogError(err, "Failed to deserialize rspec")
 	}
 
-	// Q: How does a user choose a node?
-	// A: By specifying the component ID. We must check that the node truly exists beforehand.
-	// Actually require the user to specify a node name.
-	// TODO: Fill missing values in the Rspec.
-
-	// 1. Get or create the subnamespace for the slice
+	// Get or create the subnamespace for the slice
 	subnamespaceClient := s.EdgenetClient.CoreV1alpha().SubNamespaces(s.ParentNamespace)
-	subnamespaceName, err := subnamespaceNameForSlice(*sliceIdentifier)
+	subnamespaceName, err := naming.SubnamespaceName(*sliceIdentifier)
 	if err != nil {
 		return reply.SetAndLogError(
 			err,
-			"Failed to build subnamespace name from slice URN",
+			"Failed to build subnamespace name",
 			"urn",
 			args.SliceURN,
 		)
 	}
-	// 1.a. Get the subnamespace if it exists
+	// Get the subnamespace if it exists
 	subnamespace, err := subnamespaceClient.Get(r.Context(), subnamespaceName, metav1.GetOptions{})
-	// 1.b. Create the subnamespace if it doesn't exists
-	if err != nil {
+	// Create the subnamespace if it doesn't exist
+	if err == nil {
+		klog.InfoS("Found existing subnamespace", "name", subnamespaceName)
+	} else {
 		klog.InfoS("Could not find subnamespace", "name", subnamespaceName)
 		subnamespace, err = subnamespaceForSlice(
 			*sliceIdentifier,
@@ -128,10 +163,10 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 		klog.InfoS("Created subnamespace", "name", subnamespaceName)
 	}
 
-	// 2. Build the deployment objects
-	deployments := make([]appsv1.Deployment, len(requestRspec.Nodes))
+	// Build the deployment objects
+	deployments := make([]*appsv1.Deployment, len(requestRspec.Nodes))
 	for i, node := range requestRspec.Nodes {
-		deployment, err := deploymentForRspec(
+		deployments[i], err = deploymentForRspec(
 			node,
 			s.AuthorityIdentifier,
 			*sliceIdentifier,
@@ -143,45 +178,44 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 		if err != nil {
 			return reply.SetAndLogError(err, "Failed to build deployment")
 		}
-		deployments[i] = *deployment
 	}
 
-	// 3. Create the deployment objects and rollback them in case of failure
+	// Create the deployment objects and rollback them in case of failure
 	targetNamespace := fmt.Sprintf("%s-%s", s.ParentNamespace, subnamespaceName)
 	deploymentsClient := s.KubernetesClient.AppsV1().Deployments(targetNamespace)
 	deployed := make([]bool, len(deployments))
 	success := true
 	for i, deployment := range deployments {
-		_, err := deploymentsClient.Create(r.Context(), &deployment, metav1.CreateOptions{})
-		if errors.IsAlreadyExists(err) {
+		_, err := deploymentsClient.Create(r.Context(), deployment, metav1.CreateOptions{})
+		if err == nil {
+			klog.InfoS("Created deployment", "name", deployment.Name)
+			deployed[i] = true
+		} else if errors.IsAlreadyExists(err) {
 			klog.InfoS("Ignoring already existing deployment", "name", deployment.Name)
 			deployed[i] = false
-		} else if err != nil {
+		} else {
 			_ = reply.SetAndLogError(err, "Failed to create deployment", "name", deployment.Name)
 			deployed[i] = false
 			success = false
 			break
-		} else {
-			deployed[i] = true
 		}
 	}
+	// Rollback in case of failure
 	if !success {
 		for i, isDeployed := range deployed {
 			if isDeployed {
 				deployment := deployments[i]
-				klog.InfoS("Rolling back deployment", "name", deployment)
 				err = deploymentsClient.Delete(r.Context(), deployment.Name, metav1.DeleteOptions{})
-				if err != nil {
-					klog.InfoS("Failed to rollback deployment", "name", deployment.Name)
+				if err == nil {
+					klog.InfoS("Deleted deployment", "name", deployment.Name)
+				} else {
+					klog.InfoS("Failed to delete deployment", "name", deployment.Name)
 				}
 			}
 		}
 		return nil
 	}
 
-	// TODO: Specify the correct value for geni_allocate
-	// As described here, the geni_allocate return from GetVersion advertises when a client may legally call Allocate
-	// (only once at a time per slice, whenever desired, or multiple times only if the requested resources do not interact).
 	returnRspec := rspec.Rspec{Type: rspec.RspecTypeRequest}
 	for i, isDeployed := range deployed {
 		if isDeployed {
@@ -204,25 +238,12 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 	return nil
 }
 
-func subnamespaceNameForSlice(identifier identifiers.Identifier) (string, error) {
-	if identifier.ResourceType != identifiers.ResourceTypeSlice {
-		return "", fmt.Errorf("URN resource type must be `slice`")
-	}
-	s := fmt.Sprintf(
-		"fed4fire-slice-%s-%s",
-		strings.Join(identifier.Authorities, "-"),
-		identifier.ResourceName,
-	)
-	s = strings.ReplaceAll(s, ".", "-")
-	return s, nil
-}
-
 func subnamespaceForSlice(
 	identifier identifiers.Identifier,
 	cpuLimit string,
 	memoryLimit string,
 ) (*v1alpha.SubNamespace, error) {
-	name, err := subnamespaceNameForSlice(identifier)
+	name, err := naming.SubnamespaceName(identifier)
 	if err != nil {
 		return nil, err
 	}
@@ -291,19 +312,16 @@ func deploymentForRspec(
 	if err != nil {
 		return nil, err
 	}
-	clientId := strings.ToLower(node.ClientID)
-	sliverIdentifier := authorityIdentifier.Copy(identifiers.ResourceTypeSliver,
-		fmt.Sprintf(
-			"%s-%s-%s",
-			strings.Join(sliceIdentifier.Authorities, "-"),
-			sliceIdentifier.ResourceName,
-			clientId,
-		),
-	)
+	deploymentName, err := naming.DeploymentName(sliceIdentifier, node.ClientID)
+	if err != nil {
+		return nil, err
+	}
+	sliverIdentifier := authorityIdentifier.Copy(identifiers.ResourceTypeSliver, deploymentName)
 	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: clientId,
+			Name: deploymentName,
 			Annotations: map[string]string{
+				fed4fireClientId: node.ClientID,
 				// TODO: Create vacuum job.
 				fed4fireExpires: (time.Now().Add(24 * time.Hour)).Format(time.RFC3339),
 				fed4fireUser:    userIdentifier.URN(),
@@ -315,19 +333,19 @@ func deploymentForRspec(
 			Replicas: pointer.Int32Ptr(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					fed4fireClientId: clientId,
+					"deployment": deploymentName,
 				},
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						fed4fireClientId: clientId,
+						"deployment": deploymentName,
 					},
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						{
-							Name:  clientId,
+							Name:  deploymentName,
 							Image: image,
 							Resources: corev1.ResourceRequirements{
 								Limits: map[corev1.ResourceName]resource.Quantity{
