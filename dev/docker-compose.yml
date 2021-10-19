@@ -3,7 +3,7 @@ version: "3"
 services:
   am:
     build:
-      context: .
+      context: ..
       args:
         GCFLAGS: "all=-N -l"
     command:
