@@ -13,7 +13,15 @@ func DeploymentName(sliceIdentifier identifiers.Identifier, clientId string) (st
 	if sliceIdentifier.ResourceType != identifiers.ResourceTypeSlice {
 		return "", fmt.Errorf("URN resource type must be `slice`")
 	}
-	s := fmt.Sprintf("fed4fire-%s", sha512Sum(sliceIdentifier.URN() + clientId)[:16])
+	s := "f4f-" + sha512Sum(sliceIdentifier.URN() + clientId)[:16]
+	return s, nil
+}
+
+func ServiceName(sliceIdentifier identifiers.Identifier, clientId string) (string, error) {
+	if sliceIdentifier.ResourceType != identifiers.ResourceTypeSlice {
+		return "", fmt.Errorf("URN resource type must be `slice`")
+	}
+	s := "f4f-" + sha512Sum(sliceIdentifier.URN() + clientId)[:16]
 	return s, nil
 }
 
@@ -21,7 +29,7 @@ func SubnamespaceName(sliceIdentifier identifiers.Identifier) (string, error) {
 	if sliceIdentifier.ResourceType != identifiers.ResourceTypeSlice {
 		return "", fmt.Errorf("URN resource type must be `slice`")
 	}
-	s := fmt.Sprintf("fed4fire-%s", sha512Sum(sliceIdentifier.URN())[:16])
+	s := "f4f-" + sha512Sum(sliceIdentifier.URN())[:16]
 	return s, nil
 }
 

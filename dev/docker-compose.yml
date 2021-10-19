@@ -16,7 +16,7 @@ services:
       - /app
       - --
       - -authorityName=edge-net.org
-      - -containerImage=ubuntu2004:docker.io/library/ubuntu:20.04
+      - -containerImage=ubuntu2004:docker.io/maxmouchet/openssh-server:latest
       - -kubeconfig=/kubeconfig.cfg
       - -parentNamespace=lip6-lab
       - -serverAddr=0.0.0.0:9443

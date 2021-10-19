@@ -163,8 +163,9 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 		klog.InfoS("Created subnamespace", "name", subnamespaceName)
 	}
 
-	// Build the deployment objects
+	// Build the deployment and service objects
 	deployments := make([]*appsv1.Deployment, len(requestRspec.Nodes))
+	services := make([]*corev1.Service, len(requestRspec.Nodes))
 	for i, node := range requestRspec.Nodes {
 		deployments[i], err = deploymentForRspec(
 			node,
@@ -178,11 +179,18 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 		if err != nil {
 			return reply.SetAndLogError(err, "Failed to build deployment")
 		}
+		services[i], err = serviceForRspec(node, *sliceIdentifier)
+		if err != nil {
+			return reply.SetAndLogError(err, "Failed to build service")
+		}
 	}
 
-	// Create the deployment objects and rollback them in case of failure
+	// Create the deployment and service objects and rollback them in case of failure
 	targetNamespace := fmt.Sprintf("%s-%s", s.ParentNamespace, subnamespaceName)
+	// Create the deployments
 	deploymentsClient := s.KubernetesClient.AppsV1().Deployments(targetNamespace)
+	// TODO: Duplicate deployed for deployments and services for proper rollback.
+	// Or use tuple?
 	deployed := make([]bool, len(deployments))
 	success := true
 	for i, deployment := range deployments {
@@ -200,16 +208,40 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 			break
 		}
 	}
+	// Create the services
+	servicesClient := s.KubernetesClient.CoreV1().Services(targetNamespace)
+	for i, service := range services {
+		_, err := servicesClient.Create(r.Context(), service, metav1.CreateOptions{})
+		if err == nil {
+			klog.InfoS("Created service", "name", service.Name)
+			deployed[i] = true
+		} else if errors.IsAlreadyExists(err) {
+			klog.InfoS("Ignoring already existing service", "name", service.Name)
+			deployed[i] = false
+		} else {
+			_ = reply.SetAndLogError(err, "Failed to create service", "name", service.Name)
+			deployed[i] = false
+			success = false
+			break
+		}
+	}
 	// Rollback in case of failure
 	if !success {
 		for i, isDeployed := range deployed {
 			if isDeployed {
 				deployment := deployments[i]
+				service := services[i]
 				err = deploymentsClient.Delete(r.Context(), deployment.Name, metav1.DeleteOptions{})
 				if err == nil {
 					klog.InfoS("Deleted deployment", "name", deployment.Name)
 				} else {
 					klog.InfoS("Failed to delete deployment", "name", deployment.Name)
+				}
+				err = servicesClient.Delete(r.Context(), service.Name, metav1.DeleteOptions{})
+				if err == nil {
+					klog.InfoS("Deleted service", "name", service.Name)
+				} else {
+					klog.InfoS("Failed to delete service", "name", service.Name)
 				}
 			}
 		}
@@ -273,7 +305,7 @@ func deploymentImageForSliverType(
 	containerImages map[string]string,
 ) (string, error) {
 	if len(sliverType.DiskImages) == 0 {
-		return utils.Keys(containerImages)[0], nil
+		return containerImages[utils.Keys(containerImages)[0]], nil
 	}
 	if len(sliverType.DiskImages) == 1 {
 		identifier, err := identifiers.Parse(sliverType.DiskImages[0].Name)
@@ -364,4 +396,28 @@ func deploymentForRspec(
 		},
 	}
 	return deployment, nil
+}
+
+func serviceForRspec(node rspec.Node, sliceIdentifier identifiers.Identifier) (*corev1.Service, error) {
+	deploymentName, err := naming.DeploymentName(sliceIdentifier, node.ClientID)
+	if err != nil {
+		return nil, err
+	}
+	serviceName, err := naming.ServiceName(sliceIdentifier, node.ClientID)
+	if err != nil {
+		return nil, err
+	}
+	service := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: serviceName,
+		},
+		Spec: corev1.ServiceSpec{
+			Type:  corev1.ServiceTypeNodePort,
+			Ports: []corev1.ServicePort{{Port: 22}},
+			Selector: map[string]string{
+				"deployment": deploymentName,
+			},
+		},
+	}
+	return service, nil
 }

@@ -42,6 +42,8 @@ java --module-path ~/Downloads/javafx-sdk-17.0.0.1/lib/ -cp "*:lib/*" \
 
 TODO...
 
+- The AM server is stateless, all the state is stored in the Kubernetes object through annotations.
+
 ## Mapping Fed4Fire concepts to Kubernetes
 
 - Slice: namespace (here specifically EdgeNet subnamespaces)
