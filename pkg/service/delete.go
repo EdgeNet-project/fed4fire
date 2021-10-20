@@ -45,6 +45,7 @@ func (s *Service) Delete(r *http.Request, args *DeleteArgs, reply *DeleteReply) 
 	// https://groups.geni.net/geni/wiki/GAPI_AM_API_V3/CommonConcepts#SliverAllocationStates
 	// TODO: Check credentials
 	// TODO: Check permissions/slice authority
+	// TODO: Delete configmaps
 	deploymentsToDelete := make([]appsv1.Deployment, 0)
 	servicesToDelete := make([]corev1.Service, 0)
 	slivers := make([]Sliver, 0)
