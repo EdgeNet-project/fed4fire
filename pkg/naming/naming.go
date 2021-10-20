@@ -1,5 +1,6 @@
 // Package naming maps GENI identifiers to Kubernetes-compatible names.
 // The current strategy is to use the first 8 bytes of a SHA512 hash represented as a hexadecimal string.
+// We prefix the hashes with a single character since Kubernetes labels must not start with a number.
 package naming
 
 import (
@@ -10,14 +11,14 @@ import (
 )
 
 func SliceHash(sliceIdentifier identifiers.Identifier) string {
-	return sha512Sum(sliceIdentifier.URN())[:16]
+	return "h" + sha512Sum(sliceIdentifier.URN())[:16]
 }
 
 func SliverName(sliceIdentifier identifiers.Identifier, clientId string) (string, error) {
 	if sliceIdentifier.ResourceType != identifiers.ResourceTypeSlice {
 		return "", fmt.Errorf("URN resource type must be `slice`")
 	}
-	s := "f4f-" + sha512Sum(sliceIdentifier.URN() + clientId)[:16]
+	s := "h" + sha512Sum(sliceIdentifier.URN() + clientId)[:16]
 	return s, nil
 }
 

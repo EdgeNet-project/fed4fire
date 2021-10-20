@@ -4,7 +4,10 @@ package service
 import (
 	"encoding/xml"
 	"fmt"
+	"github.com/EdgeNet-project/fed4fire/pkg/openssl"
+	"github.com/EdgeNet-project/fed4fire/pkg/utils"
 	"html"
+	"time"
 
 	"github.com/EdgeNet-project/fed4fire/pkg/xmlsec1"
 
@@ -89,16 +92,16 @@ func (c Credential) ValidatedSFA(trustedCertificates [][]byte) (*sfa.Credential,
 		return nil, err
 	}
 	// 3. Verify the embedded certificates
-	err = v.Credential.ValidateOwner(trustedCertificates)
+	err = openssl.Verify(trustedCertificates, utils.PEMDecodeMany([]byte(v.Credential.OwnerGID)))
 	if err != nil {
 		return nil, err
 	}
-	err = v.Credential.ValidateTarget(trustedCertificates)
+	err = openssl.Verify(trustedCertificates, utils.PEMDecodeMany([]byte(v.Credential.TargetGID)))
 	if err != nil {
 		return nil, err
 	}
 	// 4. Verify expiration time
-	if v.Credential.Expired() {
+	if v.Credential.Expires.Before(time.Now()) {
 		return nil, fmt.Errorf("credential has expired")
 	}
 	// TODO: Handle delegation:

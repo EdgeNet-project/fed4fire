@@ -3,10 +3,6 @@ package sfa
 import (
 	"encoding/xml"
 	"time"
-
-	"github.com/EdgeNet-project/fed4fire/pkg/identifiers"
-	"github.com/EdgeNet-project/fed4fire/pkg/openssl"
-	"github.com/EdgeNet-project/fed4fire/pkg/utils"
 )
 
 type SignedCredential struct {
@@ -41,26 +37,4 @@ type Privilege struct {
 
 type Signature struct {
 	InnerXML string `xml:",innerxml"`
-}
-
-func (c Credential) Expired() bool {
-	return c.Expires.Before(time.Now())
-}
-
-func (c Credential) ValidateOwner(trustedCertificates [][]byte) error {
-	_, err := identifiers.Parse(c.OwnerURN)
-	if err != nil {
-		return err
-	}
-	certificateChain := utils.PEMDecodeMany([]byte(c.OwnerGID))
-	return openssl.Verify(trustedCertificates, certificateChain)
-}
-
-func (c Credential) ValidateTarget(trustedCertificates [][]byte) error {
-	_, err := identifiers.Parse(c.TargetURN)
-	if err != nil {
-		return err
-	}
-	certificateChain := utils.PEMDecodeMany([]byte(c.TargetGID))
-	return openssl.Verify(trustedCertificates, certificateChain)
 }

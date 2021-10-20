@@ -112,7 +112,7 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 		return reply.SetAndLogError(err, "Invalid credentials")
 	}
 
-	// TODO: Implement RSpec passthrough + node selection.
+	// TODO: Implement RSpec passthroughs + node selection.
 	requestRspec := rspec.Rspec{}
 	err = xml.Unmarshal([]byte(html.UnescapeString(args.Rspec)), &requestRspec)
 	if err != nil {
@@ -308,7 +308,7 @@ func deploymentForRspec(
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						{
-							Name:  fed4fireSliverName,
+							Name:  sliverName,
 							Image: image,
 							Resources: corev1.ResourceRequirements{
 								Limits: map[corev1.ResourceName]resource.Quantity{

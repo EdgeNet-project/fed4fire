@@ -54,6 +54,7 @@ func (s *Service) Delete(r *http.Request, args *DeleteArgs, reply *DeleteReply) 
 		identifier, err := identifiers.Parse(urn)
 		if err != nil {
 			// TODO: Handle error
+			fmt.Println(err)
 		}
 		if identifier.ResourceType == identifiers.ResourceTypeSlice {
 			sliceHash := naming.SliceHash(*identifier)
@@ -63,12 +64,14 @@ func (s *Service) Delete(r *http.Request, args *DeleteArgs, reply *DeleteReply) 
 			})
 			if err != nil {
 				// TODO: Handle error
+				fmt.Println(err)
 			}
 			services, err := servicesClient.List(r.Context(), metav1.ListOptions{
 				LabelSelector: labelSelector,
 			})
 			if err != nil {
 				// TODO: Handle error
+				fmt.Println(err)
 			}
 			deploymentsToDelete = append(deploymentsToDelete, deployments.Items...)
 			servicesToDelete = append(servicesToDelete, services.Items...)
@@ -76,10 +79,12 @@ func (s *Service) Delete(r *http.Request, args *DeleteArgs, reply *DeleteReply) 
 			deployment, err := deploymentsClient.Get(r.Context(), identifier.ResourceName, metav1.GetOptions{})
 			if err != nil {
 				// TODO: Handle error
+				fmt.Println(err)
 			}
 			service, err := servicesClient.Get(r.Context(), identifier.ResourceName, metav1.GetOptions{})
 			if err != nil {
 				// TODO: Handle error
+				fmt.Println(err)
 			}
 			deploymentsToDelete = append(deploymentsToDelete, *deployment)
 			servicesToDelete = append(servicesToDelete, *service)
