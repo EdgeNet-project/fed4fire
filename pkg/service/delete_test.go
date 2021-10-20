@@ -2,9 +2,10 @@ package service
 
 import (
 	"context"
+	"testing"
+
 	"github.com/EdgeNet-project/fed4fire/pkg/utils"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"testing"
 )
 
 func TestDelete_Slice(t *testing.T) {

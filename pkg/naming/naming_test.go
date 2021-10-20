@@ -1,9 +1,10 @@
 package naming
 
 import (
+	"testing"
+
 	"github.com/EdgeNet-project/fed4fire/pkg/identifiers"
 	"k8s.io/apimachinery/pkg/util/validation"
-	"testing"
 )
 
 var testSliceIdentifier = identifiers.MustParse("urn:publicid:IDN+example.org+slice+test")

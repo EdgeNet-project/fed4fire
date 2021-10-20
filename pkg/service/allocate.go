@@ -119,11 +119,10 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 		return reply.SetAndLogError(err, "Failed to deserialize rspec")
 	}
 
-	// Build the deployment and service objects
-	deployments := make([]*appsv1.Deployment, len(requestRspec.Nodes))
-	services := make([]*corev1.Service, len(requestRspec.Nodes))
+	// Build the sliver resources
+	resources := make([]*sliverResources, len(requestRspec.Nodes))
 	for i, node := range requestRspec.Nodes {
-		deployments[i], err = deploymentForRspec(
+		resources[i], err = resourcesForRspec(
 			node,
 			s.AuthorityIdentifier,
 			*sliceIdentifier,
@@ -133,84 +132,73 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 			s.ContainerMemoryLimit,
 		)
 		if err != nil {
-			return reply.SetAndLogError(err, "Failed to build deployment")
-		}
-		services[i], err = serviceForRspec(node, *sliceIdentifier)
-		if err != nil {
-			return reply.SetAndLogError(err, "Failed to build service")
+			return reply.SetAndLogError(err, "Failed to build resources")
 		}
 	}
 
-	// Create the deployment and service objects and rollback them in case of failure
-	// TODO: Duplicate deployed for deployments and services for proper rollback.
-	// Or use tuple?
-	deployed := make([]bool, len(deployments))
+	// Create the sliver resources and rollback them in case of failure
 	success := true
-	for i, deployment := range deployments {
-		_, err := s.Deployments().Create(r.Context(), deployment, metav1.CreateOptions{})
+	for _, res := range resources {
+		_, err = s.ConfigMaps().Create(r.Context(), res.ConfigMap, metav1.CreateOptions{})
 		if err == nil {
-			klog.InfoS("Created deployment", "name", deployment.Name)
-			deployed[i] = true
-		} else if errors.IsAlreadyExists(err) {
-			klog.InfoS("Ignoring already existing deployment", "name", deployment.Name)
-			deployed[i] = false
-		} else {
-			_ = reply.SetAndLogError(err, "Failed to create deployment", "name", deployment.Name)
-			deployed[i] = false
+			klog.InfoS("Created configmap", "name", res.ConfigMap.Name)
+		} else if !errors.IsAlreadyExists(err) {
+			_ = reply.SetAndLogError(err, "Failed to create configmap", "name", res.ConfigMap.Name)
 			success = false
+		}
+		_, err = s.Deployments().Create(r.Context(), res.Deployment, metav1.CreateOptions{})
+		if err == nil {
+			klog.InfoS("Created deployment", "name", res.Deployment.Name)
+		} else if !errors.IsAlreadyExists(err) {
+			_ = reply.SetAndLogError(err, "Failed to create deployment", "name", res.Deployment.Name)
+			success = false
+		}
+		_, err = s.Services().Create(r.Context(), res.Service, metav1.CreateOptions{})
+		if err == nil {
+			klog.InfoS("Created service", "name", res.Service.Name)
+		} else if !errors.IsAlreadyExists(err) {
+			_ = reply.SetAndLogError(err, "Failed to create configmap", "name", res.Service.Name)
+			success = false
+		}
+		if !success {
 			break
 		}
 	}
-	// Create the services
-	for i, service := range services {
-		_, err := s.Services().Create(r.Context(), service, metav1.CreateOptions{})
-		if err == nil {
-			klog.InfoS("Created service", "name", service.Name)
-			deployed[i] = true
-		} else if errors.IsAlreadyExists(err) {
-			klog.InfoS("Ignoring already existing service", "name", service.Name)
-			deployed[i] = false
-		} else {
-			_ = reply.SetAndLogError(err, "Failed to create service", "name", service.Name)
-			deployed[i] = false
-			success = false
-			break
-		}
-	}
+
 	// Rollback in case of failure
 	if !success {
-		for i, isDeployed := range deployed {
-			if isDeployed {
-				deployment := deployments[i]
-				service := services[i]
-				err = s.Deployments().Delete(r.Context(), deployment.Name, metav1.DeleteOptions{})
-				if err == nil {
-					klog.InfoS("Deleted deployment", "name", deployment.Name)
-				} else {
-					klog.InfoS("Failed to delete deployment", "name", deployment.Name)
-				}
-				err = s.Services().Delete(r.Context(), service.Name, metav1.DeleteOptions{})
-				if err == nil {
-					klog.InfoS("Deleted service", "name", service.Name)
-				} else {
-					klog.InfoS("Failed to delete service", "name", service.Name)
-				}
+		for _, res := range resources {
+			err = s.ConfigMaps().Delete(r.Context(), res.ConfigMap.Name, metav1.DeleteOptions{})
+			if err == nil {
+				klog.InfoS("Deleted configmap", "name", res.ConfigMap.Name)
+			} else {
+				klog.InfoS("Failed to delete configmap", "name", res.ConfigMap.Name)
+			}
+			err = s.Deployments().Delete(r.Context(), res.Deployment.Name, metav1.DeleteOptions{})
+			if err == nil {
+				klog.InfoS("Deleted deployment", "name", res.Deployment.Name)
+			} else {
+				klog.InfoS("Failed to delete deployment", "name", res.Deployment.Name)
+			}
+			err = s.Services().Delete(r.Context(), res.Service.Name, metav1.DeleteOptions{})
+			if err == nil {
+				klog.InfoS("Deleted service", "name", res.Service.Name)
+			} else {
+				klog.InfoS("Failed to delete service", "name", res.Service.Name)
 			}
 		}
 		return nil
 	}
 
 	returnRspec := rspec.Rspec{Type: rspec.RspecTypeRequest}
-	for i, isDeployed := range deployed {
-		if isDeployed {
-			sliver := Sliver{
-				URN:              deployments[i].Annotations[fed4fireSliver],
-				Expires:          deployments[i].Annotations[fed4fireExpires],
-				AllocationStatus: geniStateAllocated,
-			}
-			reply.Data.Value.Slivers = append(reply.Data.Value.Slivers, sliver)
-			returnRspec.Nodes = append(returnRspec.Nodes, requestRspec.Nodes[i])
+	for i, res := range resources {
+		sliver := Sliver{
+			URN:              res.Deployment.Annotations[fed4fireSliver],
+			Expires:          res.Deployment.Annotations[fed4fireExpires],
+			AllocationStatus: geniStateAllocated,
 		}
+		reply.Data.Value.Slivers = append(reply.Data.Value.Slivers, sliver)
+		returnRspec.Nodes = append(returnRspec.Nodes, requestRspec.Nodes[i])
 	}
 
 	xml_, err := xml.Marshal(returnRspec)
@@ -222,10 +210,19 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 	return nil
 }
 
+type sliverResources struct {
+	ConfigMap  *corev1.ConfigMap
+	Deployment *appsv1.Deployment
+	Service    *corev1.Service
+}
+
 func deploymentImageForSliverType(
 	sliverType rspec.SliverType,
 	containerImages map[string]string,
 ) (string, error) {
+	if sliverType.Name != "container" {
+		return "", fmt.Errorf("invalid sliver type")
+	}
 	if len(sliverType.DiskImages) == 0 {
 		return containerImages[utils.Keys(containerImages)[0]], nil
 	}
@@ -243,7 +240,7 @@ func deploymentImageForSliverType(
 	return "", fmt.Errorf("no more than one disk image can be specified")
 }
 
-func deploymentForRspec(
+func resourcesForRspec(
 	node rspec.Node,
 	authorityIdentifier identifiers.Identifier,
 	sliceIdentifier identifiers.Identifier,
@@ -251,18 +248,14 @@ func deploymentForRspec(
 	containerImages map[string]string,
 	cpuLimit string,
 	memoryLimit string,
-) (*appsv1.Deployment, error) {
+) (*sliverResources, error) {
 	if node.Exclusive {
 		return nil, fmt.Errorf("exclusive must be false")
 	}
 	if len(node.SliverTypes) != 1 {
 		return nil, fmt.Errorf("exactly one sliver type must be specified")
 	}
-	sliverType := node.SliverTypes[0]
-	if sliverType.Name != "container" {
-		return nil, fmt.Errorf("invalid sliver type")
-	}
-	image, err := deploymentImageForSliverType(sliverType, containerImages)
+	image, err := deploymentImageForSliverType(node.SliverTypes[0], containerImages)
 	if err != nil {
 		return nil, err
 	}
@@ -284,6 +277,18 @@ func deploymentForRspec(
 		fed4fireSliceHash:  sliceHash,
 		fed4fireSliverName: sliverName,
 	}
+
+	configMap := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        sliverName,
+			Annotations: annotations,
+			Labels:      labels,
+		},
+		Data: map[string]string{
+			"authorized_keys": "",
+		},
+	}
+
 	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        sliverName,
@@ -317,27 +322,37 @@ func deploymentForRspec(
 									corev1.ResourceMemory: resource.MustParse(defaultMemoryRequest),
 								},
 							},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      "ssh-volume",
+									ReadOnly:  true,
+									MountPath: "/root/.ssh/authorized_keys",
+									SubPath:   "authorized_keys",
+								},
+							},
+						},
+					},
+					Volumes: []corev1.Volume{
+						{
+							Name: "ssh-volume",
+							VolumeSource: corev1.VolumeSource{
+								ConfigMap: &corev1.ConfigMapVolumeSource{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: configMap.Name,
+									},
+								},
+							},
 						},
 					},
 				},
 			},
 		},
 	}
-	return deployment, nil
-}
 
-func serviceForRspec(
-	node rspec.Node,
-	sliceIdentifier identifiers.Identifier,
-) (*corev1.Service, error) {
-	sliceHash := naming.SliceHash(sliceIdentifier)
-	sliverName, err := naming.SliverName(sliceIdentifier, node.ClientID)
-	if err != nil {
-		return nil, err
-	}
 	service := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: sliverName,
+			Name:        sliverName,
+			Annotations: annotations,
 			Labels: map[string]string{
 				fed4fireSliceHash:  sliceHash,
 				fed4fireSliverName: sliverName,
@@ -351,5 +366,6 @@ func serviceForRspec(
 			},
 		},
 	}
-	return service, nil
+
+	return &sliverResources{configMap, deployment, service}, nil
 }
