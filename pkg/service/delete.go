@@ -6,8 +6,6 @@ import (
 
 	"github.com/EdgeNet-project/fed4fire/pkg/naming"
 	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/EdgeNet-project/fed4fire/pkg/identifiers"
@@ -45,9 +43,7 @@ func (s *Service) Delete(r *http.Request, args *DeleteArgs, reply *DeleteReply) 
 	// https://groups.geni.net/geni/wiki/GAPI_AM_API_V3/CommonConcepts#SliverAllocationStates
 	// TODO: Check credentials
 	// TODO: Check permissions/slice authority
-	// TODO: Delete configmaps
 	deploymentsToDelete := make([]appsv1.Deployment, 0)
-	servicesToDelete := make([]corev1.Service, 0)
 	slivers := make([]Sliver, 0)
 	for _, urn := range args.URNs {
 		identifier, err := identifiers.Parse(urn)
@@ -65,28 +61,14 @@ func (s *Service) Delete(r *http.Request, args *DeleteArgs, reply *DeleteReply) 
 				// TODO: Handle error
 				fmt.Println(err)
 			}
-			services, err := s.Services().List(r.Context(), metav1.ListOptions{
-				LabelSelector: labelSelector,
-			})
-			if err != nil {
-				// TODO: Handle error
-				fmt.Println(err)
-			}
 			deploymentsToDelete = append(deploymentsToDelete, deployments.Items...)
-			servicesToDelete = append(servicesToDelete, services.Items...)
 		} else if identifier.ResourceType == identifiers.ResourceTypeSliver {
 			deployment, err := s.Deployments().Get(r.Context(), identifier.ResourceName, metav1.GetOptions{})
 			if err != nil {
 				// TODO: Handle error
 				fmt.Println(err)
 			}
-			service, err := s.Services().Get(r.Context(), identifier.ResourceName, metav1.GetOptions{})
-			if err != nil {
-				// TODO: Handle error
-				fmt.Println(err)
-			}
 			deploymentsToDelete = append(deploymentsToDelete, *deployment)
-			servicesToDelete = append(servicesToDelete, *service)
 		} else {
 			// TODO: Raise error for invalid resource type.
 		}
@@ -107,16 +89,6 @@ func (s *Service) Delete(r *http.Request, args *DeleteArgs, reply *DeleteReply) 
 			klog.InfoS("Deleted deployment", "name", deployment.Name)
 		}
 		slivers = append(slivers, sliver)
-	}
-
-	for _, service := range servicesToDelete {
-		err := s.Services().Delete(r.Context(), service.Name, metav1.DeleteOptions{})
-		if err != nil {
-			msg := "Failed to delete service"
-			klog.ErrorS(err, msg, "name", service.Name)
-		} else {
-			klog.InfoS("Deleted service", "name", service.Name)
-		}
 	}
 
 	reply.Data.Value = slivers

@@ -48,15 +48,10 @@ func TestDelete_Slice(t *testing.T) {
 	if got != geniCodeSuccess {
 		t.Errorf("Code = %d; want %d", got, geniCodeSuccess)
 	}
-	// Verify deployments and services
+	// Verify deployments
 	deployments, err := s.Deployments().List(context.TODO(), v1.ListOptions{})
 	utils.Check(err)
 	if len(deployments.Items) != 0 {
 		t.Errorf("len(deployments) = %d; want 0", len(deployments.Items))
-	}
-	services, err := s.Services().List(context.TODO(), v1.ListOptions{})
-	utils.Check(err)
-	if len(services.Items) != 0 {
-		t.Errorf("len(services) = %d; want 0", len(services.Items))
 	}
 }

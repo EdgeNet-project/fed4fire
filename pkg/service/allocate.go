@@ -139,26 +139,36 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 	// Create the sliver resources and rollback them in case of failure
 	success := true
 	for _, res := range resources {
-		_, err = s.ConfigMaps().Create(r.Context(), res.ConfigMap, metav1.CreateOptions{})
-		if err == nil {
-			klog.InfoS("Created configmap", "name", res.ConfigMap.Name)
-		} else if !errors.IsAlreadyExists(err) {
-			_ = reply.SetAndLogError(err, "Failed to create configmap", "name", res.ConfigMap.Name)
-			success = false
-		}
-		_, err = s.Deployments().Create(r.Context(), res.Deployment, metav1.CreateOptions{})
+		deployment, err := s.Deployments().Create(r.Context(), res.Deployment, metav1.CreateOptions{})
 		if err == nil {
 			klog.InfoS("Created deployment", "name", res.Deployment.Name)
 		} else if !errors.IsAlreadyExists(err) {
 			_ = reply.SetAndLogError(err, "Failed to create deployment", "name", res.Deployment.Name)
 			success = false
 		}
-		_, err = s.Services().Create(r.Context(), res.Service, metav1.CreateOptions{})
-		if err == nil {
-			klog.InfoS("Created service", "name", res.Service.Name)
-		} else if !errors.IsAlreadyExists(err) {
-			_ = reply.SetAndLogError(err, "Failed to create configmap", "name", res.Service.Name)
-			success = false
+		if deployment != nil {
+			ownerReference := metav1.OwnerReference{
+				APIVersion: "apps/v1",
+				Kind:       "Deployment",
+				Name:       deployment.Name,
+				UID:        deployment.UID,
+			}
+			res.ConfigMap.OwnerReferences = append(res.ConfigMap.OwnerReferences, ownerReference)
+			_, err = s.ConfigMaps().Create(r.Context(), res.ConfigMap, metav1.CreateOptions{})
+			if err == nil {
+				klog.InfoS("Created configmap", "name", res.ConfigMap.Name)
+			} else if !errors.IsAlreadyExists(err) {
+				_ = reply.SetAndLogError(err, "Failed to create configmap", "name", res.ConfigMap.Name)
+				success = false
+			}
+			res.Service.OwnerReferences = append(res.Service.OwnerReferences, ownerReference)
+			_, err = s.Services().Create(r.Context(), res.Service, metav1.CreateOptions{})
+			if err == nil {
+				klog.InfoS("Created service", "name", res.Service.Name)
+			} else if !errors.IsAlreadyExists(err) {
+				_ = reply.SetAndLogError(err, "Failed to create configmap", "name", res.Service.Name)
+				success = false
+			}
 		}
 		if !success {
 			break
@@ -168,23 +178,11 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 	// Rollback in case of failure
 	if !success {
 		for _, res := range resources {
-			err = s.ConfigMaps().Delete(r.Context(), res.ConfigMap.Name, metav1.DeleteOptions{})
-			if err == nil {
-				klog.InfoS("Deleted configmap", "name", res.ConfigMap.Name)
-			} else {
-				klog.InfoS("Failed to delete configmap", "name", res.ConfigMap.Name)
-			}
 			err = s.Deployments().Delete(r.Context(), res.Deployment.Name, metav1.DeleteOptions{})
 			if err == nil {
 				klog.InfoS("Deleted deployment", "name", res.Deployment.Name)
 			} else {
 				klog.InfoS("Failed to delete deployment", "name", res.Deployment.Name)
-			}
-			err = s.Services().Delete(r.Context(), res.Service.Name, metav1.DeleteOptions{})
-			if err == nil {
-				klog.InfoS("Deleted service", "name", res.Service.Name)
-			} else {
-				klog.InfoS("Failed to delete service", "name", res.Service.Name)
 			}
 		}
 		return nil
