@@ -32,15 +32,12 @@ func TestAllocate_Single(t *testing.T) {
 	if got != geniCodeSuccess {
 		t.Errorf("Code = %d; want %d", got, geniCodeSuccess)
 	}
-	deployments, err := s.KubernetesClient.AppsV1().
-		Deployments(s.Namespace).
-		List(context.TODO(), v1.ListOptions{})
+	deployments, err := s.Deployments().List(context.TODO(), v1.ListOptions{})
 	utils.Check(err)
 	if len(deployments.Items) != 1 {
 		t.Errorf("len(deployments) = %d; want 1", len(deployments.Items))
 	}
-	servicesClient := s.KubernetesClient.CoreV1().Services(s.Namespace)
-	services, err := servicesClient.List(context.TODO(), v1.ListOptions{})
+	services, err := s.Services().List(context.TODO(), v1.ListOptions{})
 	utils.Check(err)
 	if len(services.Items) != 1 {
 		t.Errorf("len(services) = %d; want 1", len(services.Items))
@@ -98,14 +95,12 @@ func TestAllocate_Many(t *testing.T) {
 		t.Errorf("Code = %d; want %d", got, geniCodeSuccess)
 	}
 	// Verify deployments
-	deploymentsClient := s.KubernetesClient.AppsV1().Deployments(s.Namespace)
-	deployments, err := deploymentsClient.List(context.TODO(), v1.ListOptions{})
+	deployments, err := s.Deployments().List(context.TODO(), v1.ListOptions{})
 	utils.Check(err)
 	if len(deployments.Items) != 2 {
 		t.Errorf("len(deployments) = %d; want 2", len(deployments.Items))
 	}
-	servicesClient := s.KubernetesClient.CoreV1().Services(s.Namespace)
-	services, err := servicesClient.List(context.TODO(), v1.ListOptions{})
+	services, err := s.Services().List(context.TODO(), v1.ListOptions{})
 	utils.Check(err)
 	if len(services.Items) != 2 {
 		t.Errorf("len(services) = %d; want 2", len(services.Items))

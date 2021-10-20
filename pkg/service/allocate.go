@@ -142,13 +142,12 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 	}
 
 	// Create the deployment and service objects and rollback them in case of failure
-	deploymentsClient := s.KubernetesClient.AppsV1().Deployments(s.Namespace)
 	// TODO: Duplicate deployed for deployments and services for proper rollback.
 	// Or use tuple?
 	deployed := make([]bool, len(deployments))
 	success := true
 	for i, deployment := range deployments {
-		_, err := deploymentsClient.Create(r.Context(), deployment, metav1.CreateOptions{})
+		_, err := s.Deployments().Create(r.Context(), deployment, metav1.CreateOptions{})
 		if err == nil {
 			klog.InfoS("Created deployment", "name", deployment.Name)
 			deployed[i] = true
@@ -163,9 +162,8 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 		}
 	}
 	// Create the services
-	servicesClient := s.KubernetesClient.CoreV1().Services(s.Namespace)
 	for i, service := range services {
-		_, err := servicesClient.Create(r.Context(), service, metav1.CreateOptions{})
+		_, err := s.Services().Create(r.Context(), service, metav1.CreateOptions{})
 		if err == nil {
 			klog.InfoS("Created service", "name", service.Name)
 			deployed[i] = true
@@ -185,13 +183,13 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 			if isDeployed {
 				deployment := deployments[i]
 				service := services[i]
-				err = deploymentsClient.Delete(r.Context(), deployment.Name, metav1.DeleteOptions{})
+				err = s.Deployments().Delete(r.Context(), deployment.Name, metav1.DeleteOptions{})
 				if err == nil {
 					klog.InfoS("Deleted deployment", "name", deployment.Name)
 				} else {
 					klog.InfoS("Failed to delete deployment", "name", deployment.Name)
 				}
-				err = servicesClient.Delete(r.Context(), service.Name, metav1.DeleteOptions{})
+				err = s.Services().Delete(r.Context(), service.Name, metav1.DeleteOptions{})
 				if err == nil {
 					klog.InfoS("Deleted service", "name", service.Name)
 				} else {
@@ -274,7 +272,6 @@ func deploymentForRspec(
 		return nil, err
 	}
 	sliverIdentifier := authorityIdentifier.Copy(identifiers.ResourceTypeSliver, sliverName)
-	// TODO: Add the annotations to the podtemplate also.
 	annotations := map[string]string{
 		fed4fireClientId: node.ClientID,
 		// TODO: Create vacuum job.

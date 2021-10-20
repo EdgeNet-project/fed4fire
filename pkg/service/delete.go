@@ -45,8 +45,6 @@ func (s *Service) Delete(r *http.Request, args *DeleteArgs, reply *DeleteReply) 
 	// https://groups.geni.net/geni/wiki/GAPI_AM_API_V3/CommonConcepts#SliverAllocationStates
 	// TODO: Check credentials
 	// TODO: Check permissions/slice authority
-	deploymentsClient := s.KubernetesClient.AppsV1().Deployments(s.Namespace)
-	servicesClient := s.KubernetesClient.CoreV1().Services(s.Namespace)
 	deploymentsToDelete := make([]appsv1.Deployment, 0)
 	servicesToDelete := make([]corev1.Service, 0)
 	slivers := make([]Sliver, 0)
@@ -59,14 +57,14 @@ func (s *Service) Delete(r *http.Request, args *DeleteArgs, reply *DeleteReply) 
 		if identifier.ResourceType == identifiers.ResourceTypeSlice {
 			sliceHash := naming.SliceHash(*identifier)
 			labelSelector := fmt.Sprintf("%s=%s", fed4fireSliceHash, sliceHash)
-			deployments, err := deploymentsClient.List(r.Context(), metav1.ListOptions{
+			deployments, err := s.Deployments().List(r.Context(), metav1.ListOptions{
 				LabelSelector: labelSelector,
 			})
 			if err != nil {
 				// TODO: Handle error
 				fmt.Println(err)
 			}
-			services, err := servicesClient.List(r.Context(), metav1.ListOptions{
+			services, err := s.Services().List(r.Context(), metav1.ListOptions{
 				LabelSelector: labelSelector,
 			})
 			if err != nil {
@@ -76,12 +74,12 @@ func (s *Service) Delete(r *http.Request, args *DeleteArgs, reply *DeleteReply) 
 			deploymentsToDelete = append(deploymentsToDelete, deployments.Items...)
 			servicesToDelete = append(servicesToDelete, services.Items...)
 		} else if identifier.ResourceType == identifiers.ResourceTypeSliver {
-			deployment, err := deploymentsClient.Get(r.Context(), identifier.ResourceName, metav1.GetOptions{})
+			deployment, err := s.Deployments().Get(r.Context(), identifier.ResourceName, metav1.GetOptions{})
 			if err != nil {
 				// TODO: Handle error
 				fmt.Println(err)
 			}
-			service, err := servicesClient.Get(r.Context(), identifier.ResourceName, metav1.GetOptions{})
+			service, err := s.Services().Get(r.Context(), identifier.ResourceName, metav1.GetOptions{})
 			if err != nil {
 				// TODO: Handle error
 				fmt.Println(err)
@@ -99,7 +97,7 @@ func (s *Service) Delete(r *http.Request, args *DeleteArgs, reply *DeleteReply) 
 			Expires:          deployment.Annotations[fed4fireExpires],
 			AllocationStatus: geniStateUnallocated,
 		}
-		err := deploymentsClient.Delete(r.Context(), deployment.Name, metav1.DeleteOptions{})
+		err := s.Deployments().Delete(r.Context(), deployment.Name, metav1.DeleteOptions{})
 		if err != nil {
 			msg := "Failed to delete deployment"
 			klog.ErrorS(err, msg, "name", deployment.Name)
@@ -111,7 +109,7 @@ func (s *Service) Delete(r *http.Request, args *DeleteArgs, reply *DeleteReply) 
 	}
 
 	for _, service := range servicesToDelete {
-		err := servicesClient.Delete(r.Context(), service.Name, metav1.DeleteOptions{})
+		err := s.Services().Delete(r.Context(), service.Name, metav1.DeleteOptions{})
 		if err != nil {
 			msg := "Failed to delete service"
 			klog.ErrorS(err, msg, "name", service.Name)

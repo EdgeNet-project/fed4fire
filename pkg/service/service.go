@@ -7,6 +7,8 @@ import (
 	"github.com/EdgeNet-project/fed4fire/pkg/openssl"
 	"github.com/EdgeNet-project/fed4fire/pkg/utils"
 	"html"
+	appsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
+	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"time"
 
 	"github.com/EdgeNet-project/fed4fire/pkg/xmlsec1"
@@ -27,6 +29,18 @@ type Service struct {
 	Namespace            string
 	TrustedCertificates  [][]byte
 	KubernetesClient     kubernetes.Interface
+}
+
+func (s Service) Deployments() appsv1.DeploymentInterface {
+	return s.KubernetesClient.AppsV1().Deployments(s.Namespace)
+}
+
+func (s Service) Nodes() corev1.NodeInterface {
+	return s.KubernetesClient.CoreV1().Nodes()
+}
+
+func (s Service) Services() corev1.ServiceInterface {
+	return s.KubernetesClient.CoreV1().Services(s.Namespace)
 }
 
 type Code struct {

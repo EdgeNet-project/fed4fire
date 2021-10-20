@@ -76,7 +76,7 @@ func (s *Service) ListResources(
 		return nil
 	}
 
-	nodes, err := s.KubernetesClient.CoreV1().Nodes().List(r.Context(), metav1.ListOptions{})
+	nodes, err := s.Nodes().List(r.Context(), metav1.ListOptions{})
 	if err != nil {
 		return reply.SetAndLogError(err, "Failed to list nodes")
 	}
