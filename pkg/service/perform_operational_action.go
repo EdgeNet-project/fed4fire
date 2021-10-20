@@ -37,6 +37,6 @@ func (s *Service) PerformOperationalAction(
 	args *PerformOperationalActionArgs,
 	reply *PerformOperationalActionReply,
 ) error {
-	//s.KubernetesClient.AppsV1().Deployments(s.Namespace).
+	//s.Deployments().Update(r.Context(), )
 	return nil
 }

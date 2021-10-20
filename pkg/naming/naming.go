@@ -1,6 +1,5 @@
 // Package naming maps GENI identifiers to Kubernetes-compatible names.
 // The current strategy is to use the first 8 bytes of a SHA512 hash represented as a hexadecimal string.
-// We prefix the hashes with a single character since Kubernetes labels must not start with a number.
 package naming
 
 import (
