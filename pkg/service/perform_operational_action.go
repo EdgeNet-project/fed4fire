@@ -19,6 +19,10 @@ type PerformOperationalActionReply struct {
 // PerformOperationalAction performs the named operational action on the named slivers,
 // possibly changing the geni_operational_status of the named slivers, e.g. 'start' a VM.
 // For valid operations and expected states, consult the state diagram advertised in the aggregate's advertisement RSpec.
-func (s *Service) PerformOperationalAction(r *http.Request, args *PerformOperationalActionArgs, reply *PerformOperationalActionReply) error {
+func (s *Service) PerformOperationalAction(
+	r *http.Request,
+	args *PerformOperationalActionArgs,
+	reply *PerformOperationalActionReply,
+) error {
 	return nil
 }

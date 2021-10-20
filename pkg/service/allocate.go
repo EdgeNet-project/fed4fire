@@ -13,7 +13,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/errors"
 
-	"github.com/EdgeNet-project/edgenet/pkg/apis/core/v1alpha"
 	"github.com/EdgeNet-project/fed4fire/pkg/identifiers"
 	"github.com/EdgeNet-project/fed4fire/pkg/rspec"
 	appsv1 "k8s.io/api/apps/v1"
@@ -120,49 +119,6 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 		return reply.SetAndLogError(err, "Failed to deserialize rspec")
 	}
 
-	// Get or create the subnamespace for the slice
-	subnamespaceClient := s.EdgenetClient.CoreV1alpha().SubNamespaces(s.ParentNamespace)
-	subnamespaceName, err := naming.SubnamespaceName(*sliceIdentifier)
-	if err != nil {
-		return reply.SetAndLogError(
-			err,
-			"Failed to build subnamespace name",
-			"urn",
-			args.SliceURN,
-		)
-	}
-	// Get the subnamespace if it exists
-	subnamespace, err := subnamespaceClient.Get(r.Context(), subnamespaceName, metav1.GetOptions{})
-	// Create the subnamespace if it doesn't exist
-	if err == nil {
-		klog.InfoS("Found existing subnamespace", "name", subnamespaceName)
-	} else {
-		klog.InfoS("Could not find subnamespace", "name", subnamespaceName)
-		subnamespace, err = subnamespaceForSlice(
-			*sliceIdentifier,
-			s.NamespaceCpuLimit,
-			s.NamespaceMemoryLimit,
-		)
-		if err != nil {
-			return reply.SetAndLogError(
-				err,
-				"Failed to build subnamespace",
-				"name",
-				subnamespaceName,
-			)
-		}
-		_, err = subnamespaceClient.Create(r.Context(), subnamespace, metav1.CreateOptions{})
-		if err != nil {
-			return reply.SetAndLogError(
-				err,
-				"Failed to create subnamespace",
-				"name",
-				subnamespaceName,
-			)
-		}
-		klog.InfoS("Created subnamespace", "name", subnamespaceName)
-	}
-
 	// Build the deployment and service objects
 	deployments := make([]*appsv1.Deployment, len(requestRspec.Nodes))
 	services := make([]*corev1.Service, len(requestRspec.Nodes))
@@ -186,9 +142,7 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 	}
 
 	// Create the deployment and service objects and rollback them in case of failure
-	targetNamespace := fmt.Sprintf("%s-%s", s.ParentNamespace, subnamespaceName)
-	// Create the deployments
-	deploymentsClient := s.KubernetesClient.AppsV1().Deployments(targetNamespace)
+	deploymentsClient := s.KubernetesClient.AppsV1().Deployments(s.Namespace)
 	// TODO: Duplicate deployed for deployments and services for proper rollback.
 	// Or use tuple?
 	deployed := make([]bool, len(deployments))
@@ -209,7 +163,7 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 		}
 	}
 	// Create the services
-	servicesClient := s.KubernetesClient.CoreV1().Services(targetNamespace)
+	servicesClient := s.KubernetesClient.CoreV1().Services(s.Namespace)
 	for i, service := range services {
 		_, err := servicesClient.Create(r.Context(), service, metav1.CreateOptions{})
 		if err == nil {
@@ -270,36 +224,6 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 	return nil
 }
 
-func subnamespaceForSlice(
-	identifier identifiers.Identifier,
-	cpuLimit string,
-	memoryLimit string,
-) (*v1alpha.SubNamespace, error) {
-	name, err := naming.SubnamespaceName(identifier)
-	if err != nil {
-		return nil, err
-	}
-	subnamespace := &v1alpha.SubNamespace{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
-			Annotations: map[string]string{
-				fed4fireSlice: identifier.URN(),
-			},
-		},
-		Spec: v1alpha.SubNamespaceSpec{
-			Resources: v1alpha.Resources{
-				CPU:    cpuLimit,
-				Memory: memoryLimit,
-			},
-			Inheritance: v1alpha.Inheritance{
-				NetworkPolicy: true,
-				RBAC:          true,
-			},
-		},
-	}
-	return subnamespace, nil
-}
-
 func deploymentImageForSliverType(
 	sliverType rspec.SliverType,
 	containerImages map[string]string,
@@ -344,40 +268,47 @@ func deploymentForRspec(
 	if err != nil {
 		return nil, err
 	}
-	deploymentName, err := naming.DeploymentName(sliceIdentifier, node.ClientID)
+	sliceHash := naming.SliceHash(sliceIdentifier)
+	sliverName, err := naming.SliverName(sliceIdentifier, node.ClientID)
 	if err != nil {
 		return nil, err
 	}
-	sliverIdentifier := authorityIdentifier.Copy(identifiers.ResourceTypeSliver, deploymentName)
+	sliverIdentifier := authorityIdentifier.Copy(identifiers.ResourceTypeSliver, sliverName)
+	// TODO: Add the annotations to the podtemplate also.
+	annotations := map[string]string{
+		fed4fireClientId: node.ClientID,
+		// TODO: Create vacuum job.
+		fed4fireExpires: (time.Now().Add(24 * time.Hour)).Format(time.RFC3339),
+		fed4fireUser:    userIdentifier.URN(),
+		fed4fireSlice:   sliceIdentifier.URN(),
+		fed4fireSliver:  sliverIdentifier.URN(),
+	}
+	labels := map[string]string{
+		fed4fireSliceHash:  sliceHash,
+		fed4fireSliverName: sliverName,
+	}
 	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: deploymentName,
-			Annotations: map[string]string{
-				fed4fireClientId: node.ClientID,
-				// TODO: Create vacuum job.
-				fed4fireExpires: (time.Now().Add(24 * time.Hour)).Format(time.RFC3339),
-				fed4fireUser:    userIdentifier.URN(),
-				fed4fireSlice:   sliceIdentifier.URN(),
-				fed4fireSliver:  sliverIdentifier.URN(),
-			},
+			Name:        sliverName,
+			Annotations: annotations,
+			Labels:      labels,
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: pointer.Int32Ptr(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					"deployment": deploymentName,
+					fed4fireSliverName: sliverName,
 				},
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						"deployment": deploymentName,
-					},
+					Annotations: annotations,
+					Labels:      labels,
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						{
-							Name:  deploymentName,
+							Name:  fed4fireSliverName,
 							Image: image,
 							Resources: corev1.ResourceRequirements{
 								Limits: map[corev1.ResourceName]resource.Quantity{
@@ -398,24 +329,28 @@ func deploymentForRspec(
 	return deployment, nil
 }
 
-func serviceForRspec(node rspec.Node, sliceIdentifier identifiers.Identifier) (*corev1.Service, error) {
-	deploymentName, err := naming.DeploymentName(sliceIdentifier, node.ClientID)
-	if err != nil {
-		return nil, err
-	}
-	serviceName, err := naming.ServiceName(sliceIdentifier, node.ClientID)
+func serviceForRspec(
+	node rspec.Node,
+	sliceIdentifier identifiers.Identifier,
+) (*corev1.Service, error) {
+	sliceHash := naming.SliceHash(sliceIdentifier)
+	sliverName, err := naming.SliverName(sliceIdentifier, node.ClientID)
 	if err != nil {
 		return nil, err
 	}
 	service := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: serviceName,
+			Name: sliverName,
+			Labels: map[string]string{
+				fed4fireSliceHash:  sliceHash,
+				fed4fireSliverName: sliverName,
+			},
 		},
 		Spec: corev1.ServiceSpec{
 			Type:  corev1.ServiceTypeNodePort,
 			Ports: []corev1.ServicePort{{Port: 22}},
 			Selector: map[string]string{
-				"deployment": deploymentName,
+				fed4fireSliverName: sliverName,
 			},
 		},
 	}

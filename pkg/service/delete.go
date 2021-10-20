@@ -5,8 +5,10 @@ import (
 	"net/http"
 
 	"github.com/EdgeNet-project/fed4fire/pkg/naming"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/EdgeNet-project/fed4fire/pkg/identifiers"
 
@@ -41,54 +43,75 @@ func (s *Service) Delete(r *http.Request, args *DeleteArgs, reply *DeleteReply) 
 	// Delete moves 1 or more slivers from either state 2 or 3 (geni_allocated or geni_provisioned),
 	// back to state 1 (geni_unallocated).
 	// https://groups.geni.net/geni/wiki/GAPI_AM_API_V3/CommonConcepts#SliverAllocationStates
-	//deploymentsClient :=
 	// TODO: Check credentials
 	// TODO: Check permissions/slice authority
-	// TODO: Simplify code by listing all deployments?
+	deploymentsClient := s.KubernetesClient.AppsV1().Deployments(s.Namespace)
+	servicesClient := s.KubernetesClient.CoreV1().Services(s.Namespace)
+	deploymentsToDelete := make([]appsv1.Deployment, 0)
+	servicesToDelete := make([]corev1.Service, 0)
 	slivers := make([]Sliver, 0)
 	for _, urn := range args.URNs {
 		identifier, err := identifiers.Parse(urn)
 		if err != nil {
 			// TODO: Handle error
 		}
-		//TODO: Handle slice and slivers
 		if identifier.ResourceType == identifiers.ResourceTypeSlice {
-			subnamespaceName, err := naming.SubnamespaceName(*identifier)
-			if err != nil {
-				reply.SetAndLogError(
-					err,
-					"Failed to build subnamespace name from slice URN",
-					"urn",
-					urn,
-				)
-				return nil
-			}
-			targetNamespace := fmt.Sprintf("%s-%s", s.ParentNamespace, subnamespaceName)
-			deploymentsClient := s.KubernetesClient.AppsV1().Deployments(targetNamespace)
-			deployments, err := deploymentsClient.List(r.Context(), v1.ListOptions{})
+			sliceHash := naming.SliceHash(*identifier)
+			labelSelector := fmt.Sprintf("%s=%s", fed4fireSliceHash, sliceHash)
+			deployments, err := deploymentsClient.List(r.Context(), metav1.ListOptions{
+				LabelSelector: labelSelector,
+			})
 			if err != nil {
 				// TODO: Handle error
 			}
-			for _, deployment := range deployments.Items {
-				sliver := Sliver{
-					URN:              deployment.Annotations[fed4fireSliver],
-					Expires:          deployment.Annotations[fed4fireExpires],
-					AllocationStatus: geniStateUnallocated,
-				}
-				err = deploymentsClient.Delete(r.Context(), deployment.Name, v1.DeleteOptions{})
-				if err != nil {
-					msg := "Failed to delete deployment"
-					klog.ErrorS(err, msg, "name", deployment.Name)
-					sliver.Error = fmt.Sprintf("%s: %s", msg, err)
-				} else {
-					klog.InfoS("Delete deployment", "name", deployment.Name)
-				}
-				slivers = append(slivers, sliver)
+			services, err := servicesClient.List(r.Context(), metav1.ListOptions{
+				LabelSelector: labelSelector,
+			})
+			if err != nil {
+				// TODO: Handle error
 			}
+			deploymentsToDelete = append(deploymentsToDelete, deployments.Items...)
+			servicesToDelete = append(servicesToDelete, services.Items...)
 		} else if identifier.ResourceType == identifiers.ResourceTypeSliver {
-			// TODO
+			deployment, err := deploymentsClient.Get(r.Context(), identifier.ResourceName, metav1.GetOptions{})
+			if err != nil {
+				// TODO: Handle error
+			}
+			service, err := servicesClient.Get(r.Context(), identifier.ResourceName, metav1.GetOptions{})
+			if err != nil {
+				// TODO: Handle error
+			}
+			deploymentsToDelete = append(deploymentsToDelete, *deployment)
+			servicesToDelete = append(servicesToDelete, *service)
 		} else {
 			// TODO: Raise error for invalid resource type.
+		}
+	}
+
+	for _, deployment := range deploymentsToDelete {
+		sliver := Sliver{
+			URN:              deployment.Annotations[fed4fireSliver],
+			Expires:          deployment.Annotations[fed4fireExpires],
+			AllocationStatus: geniStateUnallocated,
+		}
+		err := deploymentsClient.Delete(r.Context(), deployment.Name, metav1.DeleteOptions{})
+		if err != nil {
+			msg := "Failed to delete deployment"
+			klog.ErrorS(err, msg, "name", deployment.Name)
+			sliver.Error = fmt.Sprintf("%s: %s", msg, err)
+		} else {
+			klog.InfoS("Deleted deployment", "name", deployment.Name)
+		}
+		slivers = append(slivers, sliver)
+	}
+
+	for _, service := range servicesToDelete {
+		err := servicesClient.Delete(r.Context(), service.Name, metav1.DeleteOptions{})
+		if err != nil {
+			msg := "Failed to delete service"
+			klog.ErrorS(err, msg, "name", service.Name)
+		} else {
+			klog.InfoS("Deleted service", "name", service.Name)
 		}
 	}
 

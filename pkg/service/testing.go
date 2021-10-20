@@ -4,9 +4,10 @@ import (
 	"context"
 	"encoding/pem"
 	"encoding/xml"
-	"github.com/EdgeNet-project/fed4fire/pkg/identifiers"
 	"net/http"
 	"time"
+
+	"github.com/EdgeNet-project/fed4fire/pkg/identifiers"
 
 	"github.com/EdgeNet-project/fed4fire/pkg/sfa"
 	"github.com/EdgeNet-project/fed4fire/pkg/xmlsec1"
@@ -16,8 +17,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/EdgeNet-project/edgenet/pkg/generated/clientset/versioned"
-	edgenettestclient "github.com/EdgeNet-project/edgenet/pkg/generated/clientset/versioned/fake"
 	"k8s.io/client-go/kubernetes"
 	kubetestclient "k8s.io/client-go/kubernetes/fake"
 )
@@ -45,7 +44,7 @@ var userCert, _ = utils.CreateCertificate(
 var testSliceCredential = createCredential(testUserIdentifier, testSliceIdentifier)
 
 func testService() *Service {
-	var edgenetClient versioned.Interface = edgenettestclient.NewSimpleClientset()
+	//var edgenetClient versioned.Interface = edgenettestclient.NewSimpleClientset()
 	var kubernetesClient kubernetes.Interface = kubetestclient.NewSimpleClientset()
 	return &Service{
 		ContainerImages: map[string]string{
@@ -55,9 +54,9 @@ func testService() *Service {
 		ContainerMemoryLimit: "2Gi",
 		NamespaceCpuLimit:    "8",
 		NamespaceMemoryLimit: "8Gi",
-		EdgenetClient:        edgenetClient,
-		KubernetesClient:     kubernetesClient,
-		TrustedCertificates:  [][]byte{authorityCert},
+		//EdgenetClient:        edgenetClient,
+		KubernetesClient:    kubernetesClient,
+		TrustedCertificates: [][]byte{authorityCert},
 	}
 }
 
@@ -92,8 +91,20 @@ func testNode(name string, ready bool) *v1.Node {
 }
 
 func createCredential(owner identifiers.Identifier, target identifiers.Identifier) Credential {
-	ownerCert, _ := utils.CreateCertificate(owner.URN(), "", owner.URN(), authorityCert, authorityKey)
-	targetCert, _ := utils.CreateCertificate(target.URN(), "", target.URN(), authorityCert, authorityKey)
+	ownerCert, _ := utils.CreateCertificate(
+		owner.URN(),
+		"",
+		owner.URN(),
+		authorityCert,
+		authorityKey,
+	)
+	targetCert, _ := utils.CreateCertificate(
+		target.URN(),
+		"",
+		target.URN(),
+		authorityCert,
+		authorityKey,
+	)
 	ownerGid := pem.EncodeToMemory(&pem.Block{
 		Type:  utils.PEMBlockTypeCertificate,
 		Bytes: ownerCert,

@@ -7,7 +7,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/EdgeNet-project/edgenet/pkg/generated/clientset/versioned"
 	"github.com/EdgeNet-project/fed4fire/pkg/identifiers"
 	"github.com/EdgeNet-project/fed4fire/pkg/service"
 	"github.com/EdgeNet-project/fed4fire/pkg/utils"
@@ -27,10 +26,8 @@ var authorityName string
 var containerImages utils.ArrayFlags
 var containerCpuLimit string
 var containerMemoryLimit string
-var namespaceCpuLimit string
-var namespaceMemoryLimit string
 var kubeconfigFile string
-var parentNamespace string
+var namespace string
 var serverAddr string
 var trustedCerts utils.ArrayFlags
 
@@ -60,10 +57,8 @@ func main() {
 	flag.Var(&containerImages, "containerImage", "name:image of a container image that can be deployed; can be specified multiple times")
 	flag.StringVar(&containerCpuLimit, "containerCpuLimit", "2", "maximum amount of CPU that can be used by a container")
 	flag.StringVar(&containerMemoryLimit, "containerMemoryLimit", "2Gi", "maximum amount of memory that can be used by a container")
-	flag.StringVar(&namespaceCpuLimit, "namespaceCpuLimit", "8", "maximum amount of CPU that can be used by a slice subnamespace")
-	flag.StringVar(&namespaceMemoryLimit, "namespaceMemoryLimit", "8Gi", "maximum amount of memory that can be used by a slice subnamespace")
 	flag.StringVar(&kubeconfigFile, "kubeconfig", "", "path to the kubeconfig file used to communicate with the Kubernetes API")
-	flag.StringVar(&parentNamespace, "parentNamespace", "", "kubernetes namespaces in which to create slice subnamespaces")
+	flag.StringVar(&namespace, "namespace", "", "kubernetes namespaces in which to create resources")
 	flag.StringVar(&serverAddr, "serverAddr", "localhost:9443", "host:port on which to listen")
 	flag.Var(&trustedCerts, "trustedCert", "path to a trusted certificate for authenticating users; can be specified multiple times")
 	flag.Parse()
@@ -74,9 +69,6 @@ func main() {
 	}
 
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfigFile)
-	utils.Check(err)
-
-	edgeclient, err := versioned.NewForConfig(config)
 	utils.Check(err)
 
 	kubeclient, err := kubernetes.NewForConfig(config)
@@ -110,11 +102,8 @@ func main() {
 		ContainerImages:      containerImages_,
 		ContainerCpuLimit:    containerCpuLimit,
 		ContainerMemoryLimit: containerMemoryLimit,
-		NamespaceCpuLimit:    namespaceCpuLimit,
-		NamespaceMemoryLimit: namespaceMemoryLimit,
-		ParentNamespace:      parentNamespace,
+		Namespace:            namespace,
 		TrustedCertificates:  trustedCerts_,
-		EdgenetClient:        edgeclient,
 		KubernetesClient:     kubeclient,
 	}
 

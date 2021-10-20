@@ -6,11 +6,8 @@ import (
 	"fmt"
 	"html"
 
-	"github.com/EdgeNet-project/fed4fire/pkg/openssl"
-	"github.com/EdgeNet-project/fed4fire/pkg/utils"
 	"github.com/EdgeNet-project/fed4fire/pkg/xmlsec1"
 
-	"github.com/EdgeNet-project/edgenet/pkg/generated/clientset/versioned"
 	"github.com/EdgeNet-project/fed4fire/pkg/identifiers"
 	"github.com/EdgeNet-project/fed4fire/pkg/sfa"
 	"k8s.io/client-go/kubernetes"
@@ -24,9 +21,8 @@ type Service struct {
 	ContainerMemoryLimit string
 	NamespaceCpuLimit    string
 	NamespaceMemoryLimit string
-	ParentNamespace      string
+	Namespace            string
 	TrustedCertificates  [][]byte
-	EdgenetClient        versioned.Interface
 	KubernetesClient     kubernetes.Interface
 }
 
@@ -49,38 +45,6 @@ type Sliver struct {
 	Expires          string `xml:"geni_expires"`
 	AllocationStatus string `xml:"geni_allocation_status"`
 	Error            string `xml:"geni_error"`
-}
-
-func (c Credential) ValidatedSFA(trustedCertificates [][]byte) (*sfa.Credential, error) {
-	if c.Type != geniCredentialTypeSfa {
-		return nil, fmt.Errorf("credential type is not geni_sfa")
-	}
-	val := []byte(html.UnescapeString(c.Value))
-	// 1. Verify the credential signature
-	err := xmlsec1.Verify(trustedCertificates, val)
-	if err != nil {
-		return nil, err
-	}
-	// 2. Decode the credential
-	v := sfa.SignedCredential{}
-	err = xml.Unmarshal(val, &v)
-	if err != nil {
-		return nil, err
-	}
-	// 3. Verify the embedded certificates
-	err = openssl.Verify(trustedCertificates, utils.PEMDecodeMany([]byte(v.Credential.OwnerGID)))
-	if err != nil {
-		return nil, err
-	}
-	err = openssl.Verify(trustedCertificates, utils.PEMDecodeMany([]byte(v.Credential.TargetGID)))
-	if err != nil {
-		return nil, err
-	}
-	// TODO: Check expiration.
-	// TODO: Handle delegation?
-	// For non delegated credentials, or for the root credential of a delegated credential (all the way back up any delegation chain), the signer must have authority over the target. Specifically, the credential issuer must have a URN indicating it is of type authority, and it must be the toplevelauthority or a parent authority of the authority named in the credential's target URN. See the URN rules page for details about authorities.
-	// For delegated credentials, the signer of the credential must be the subject (owner) of the parent credential), until you get to the root credential (no parent), in which case the above rule applies.
-	return &v.Credential, nil
 }
 
 type Options struct {
@@ -106,6 +70,41 @@ type Options struct {
 		Type    string `xml:"type"`
 		Version string `xml:"version"`
 	} `xml:"geni_rspec_version"`
+}
+
+func (c Credential) ValidatedSFA(trustedCertificates [][]byte) (*sfa.Credential, error) {
+	if c.Type != geniCredentialTypeSfa {
+		return nil, fmt.Errorf("credential type is not geni_sfa")
+	}
+	val := []byte(html.UnescapeString(c.Value))
+	// 1. Verify the credential signature
+	err := xmlsec1.Verify(trustedCertificates, val)
+	if err != nil {
+		return nil, err
+	}
+	// 2. Decode the credential
+	v := sfa.SignedCredential{}
+	err = xml.Unmarshal(val, &v)
+	if err != nil {
+		return nil, err
+	}
+	// 3. Verify the embedded certificates
+	err = v.Credential.ValidateOwner(trustedCertificates)
+	if err != nil {
+		return nil, err
+	}
+	err = v.Credential.ValidateTarget(trustedCertificates)
+	if err != nil {
+		return nil, err
+	}
+	// 4. Verify expiration time
+	if v.Credential.Expired() {
+		return nil, fmt.Errorf("credential has expired")
+	}
+	// TODO: Handle delegation:
+	// For non delegated credentials, or for the root credential of a delegated credential (all the way back up any delegation chain), the signer must have authority over the target. Specifically, the credential issuer must have a URN indicating it is of type authority, and it must be the toplevelauthority or a parent authority of the authority named in the credential's target URN. See the URN rules page for details about authorities.
+	// For delegated credentials, the signer of the credential must be the subject (owner) of the parent credential), until you get to the root credential (no parent), in which case the above rule applies.
+	return &v.Credential, nil
 }
 
 func FindMatchingCredential(
@@ -145,6 +144,7 @@ const (
 	fed4fireClientId   = "fed4fire.eu/client-id"
 	fed4fireExpires    = "fed4fire.eu/expires"
 	fed4fireSlice      = "fed4fire.eu/slice"
+	fed4fireSliceHash  = "fed4fire.eu/slice-hash"
 	fed4fireSliver     = "fed4fire.eu/sliver"
 	fed4fireSliverName = "fed4fire.eu/sliver-name"
 	fed4fireUser       = "fed4fire.eu/user"
@@ -219,9 +219,9 @@ const (
 	geniAllocateMany = "geny_many"
 )
 
-// https://groups.geni.net/geni/wiki/GeniApiCredentials
-// https://groups.geni.net/geni/wiki/GAPI_AM_API_V3/CommonConcepts#credentials
 const (
+	// https://groups.geni.net/geni/wiki/TIEDABACCredential
 	geniCredentialTypeAbac = "geni_abac"
-	geniCredentialTypeSfa  = "geni_sfa"
+	// https://groups.geni.net/geni/wiki/GeniApiCredentials
+	geniCredentialTypeSfa = "geni_sfa"
 )

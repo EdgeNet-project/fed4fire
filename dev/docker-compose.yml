@@ -18,7 +18,7 @@ services:
       - -authorityName=edge-net.org
       - -containerImage=ubuntu2004:docker.io/maxmouchet/openssh-server:latest
       - -kubeconfig=/kubeconfig.cfg
-      - -parentNamespace=lip6-lab
+      - -namespace=fed4fire-dev
       - -serverAddr=0.0.0.0:9443
       - -trustedCert=/trusted_roots/ilabt.imec.be.pem
     entrypoint: /dlv

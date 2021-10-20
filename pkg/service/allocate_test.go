@@ -2,27 +2,11 @@ package service
 
 import (
 	"context"
-	"fmt"
-	"github.com/EdgeNet-project/fed4fire/pkg/naming"
+	"testing"
+
 	"github.com/EdgeNet-project/fed4fire/pkg/utils"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"testing"
 )
-
-func TestAllocate_NoCredentials(t *testing.T) {
-	s := testService()
-	r := testRequest()
-	args := &AllocateArgs{SliceURN: testSliceIdentifier.URN()}
-	reply := &AllocateReply{}
-	err := s.Allocate(r, args, reply)
-	if err != nil {
-		t.Errorf("Allocate() = %v; want nil", err)
-	}
-	got := reply.Data.Code.Code
-	if got != geniCodeError {
-		t.Errorf("Code = %d; want %d", got, geniCodeError)
-	}
-}
 
 func TestAllocate_Single(t *testing.T) {
 	s := testService()
@@ -48,14 +32,18 @@ func TestAllocate_Single(t *testing.T) {
 	if got != geniCodeSuccess {
 		t.Errorf("Code = %d; want %d", got, geniCodeSuccess)
 	}
-	// TODO(edgenet): "namespace" label/annotation on subnamespace object to simplify this?
-	subnamespaceName, err := naming.SubnamespaceName(testSliceIdentifier)
-	utils.Check(err)
-	namespace := fmt.Sprintf("%s-%s", s.ParentNamespace, subnamespaceName)
-	deployments, err := s.KubernetesClient.AppsV1().Deployments(namespace).List(context.TODO(), v1.ListOptions{})
+	deployments, err := s.KubernetesClient.AppsV1().
+		Deployments(s.Namespace).
+		List(context.TODO(), v1.ListOptions{})
 	utils.Check(err)
 	if len(deployments.Items) != 1 {
 		t.Errorf("len(deployments) = %d; want 1", len(deployments.Items))
+	}
+	servicesClient := s.KubernetesClient.CoreV1().Services(s.Namespace)
+	services, err := servicesClient.List(context.TODO(), v1.ListOptions{})
+	utils.Check(err)
+	if len(services.Items) != 1 {
+		t.Errorf("len(services) = %d; want 1", len(services.Items))
 	}
 }
 
@@ -110,12 +98,16 @@ func TestAllocate_Many(t *testing.T) {
 		t.Errorf("Code = %d; want %d", got, geniCodeSuccess)
 	}
 	// Verify deployments
-	subnamespaceName, err := naming.SubnamespaceName(testSliceIdentifier)
-	utils.Check(err)
-	namespace := fmt.Sprintf("%s-%s", s.ParentNamespace, subnamespaceName)
-	deployments, err := s.KubernetesClient.AppsV1().Deployments(namespace).List(context.TODO(), v1.ListOptions{})
+	deploymentsClient := s.KubernetesClient.AppsV1().Deployments(s.Namespace)
+	deployments, err := deploymentsClient.List(context.TODO(), v1.ListOptions{})
 	utils.Check(err)
 	if len(deployments.Items) != 2 {
 		t.Errorf("len(deployments) = %d; want 2", len(deployments.Items))
+	}
+	servicesClient := s.KubernetesClient.CoreV1().Services(s.Namespace)
+	services, err := servicesClient.List(context.TODO(), v1.ListOptions{})
+	utils.Check(err)
+	if len(services.Items) != 2 {
+		t.Errorf("len(services) = %d; want 2", len(services.Items))
 	}
 }
