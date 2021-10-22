@@ -18,6 +18,7 @@ type GC struct {
 
 func (gc GC) Start() {
 	go gc.loop()
+	klog.InfoS("Started garbage collector")
 }
 
 func (gc GC) loop() {

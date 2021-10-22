@@ -19,5 +19,6 @@ type DescribeReply struct {
 // e.g. a single slice or a set of the slivers in a slice.
 // This listing and description should be sufficiently descriptive to allow experimenters to use the resources.
 func (s *Service) Describe(r *http.Request, args *DescribeArgs, reply *DescribeReply) error {
+
 	return nil
 }
