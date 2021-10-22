@@ -2,15 +2,21 @@
 package service
 
 import (
+	"context"
 	"encoding/xml"
 	"fmt"
 	"html"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"time"
+
+	"github.com/EdgeNet-project/fed4fire/pkg/naming"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/EdgeNet-project/fed4fire/pkg/openssl"
 	"github.com/EdgeNet-project/fed4fire/pkg/utils"
-	appsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
-	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
+	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 
 	"github.com/EdgeNet-project/fed4fire/pkg/xmlsec1"
 
@@ -32,20 +38,110 @@ type Service struct {
 	KubernetesClient     kubernetes.Interface
 }
 
-func (s Service) ConfigMaps() corev1.ConfigMapInterface {
+func (s Service) ConfigMaps() typedcorev1.ConfigMapInterface {
 	return s.KubernetesClient.CoreV1().ConfigMaps(s.Namespace)
 }
 
-func (s Service) Deployments() appsv1.DeploymentInterface {
+func (s Service) Deployments() typedappsv1.DeploymentInterface {
 	return s.KubernetesClient.AppsV1().Deployments(s.Namespace)
 }
 
-func (s Service) Nodes() corev1.NodeInterface {
+func (s Service) Nodes() typedcorev1.NodeInterface {
 	return s.KubernetesClient.CoreV1().Nodes()
 }
 
-func (s Service) Services() corev1.ServiceInterface {
+func (s Service) Pods() typedcorev1.PodInterface {
+	return s.KubernetesClient.CoreV1().Pods(s.Namespace)
+}
+
+func (s Service) Services() typedcorev1.ServiceInterface {
 	return s.KubernetesClient.CoreV1().Services(s.Namespace)
+}
+
+func (s Service) GetConfigMaps(ctx context.Context, identifier identifiers.Identifier) ([]corev1.ConfigMap, error) {
+	switch identifier.ResourceType {
+	case identifiers.ResourceTypeSlice:
+		labelSelector, err := s.LabelSelector(identifier)
+		if err != nil {
+			return nil, err
+		}
+		configMaps, err := s.ConfigMaps().List(ctx, metav1.ListOptions{
+			LabelSelector: labelSelector,
+		})
+		if err != nil {
+			return nil, err
+		}
+		return configMaps.Items, nil
+	case identifiers.ResourceTypeSliver:
+		configMap, err := s.ConfigMaps().Get(ctx, identifier.ResourceName, metav1.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+		return []corev1.ConfigMap{*configMap}, nil
+	default:
+		return nil, fmt.Errorf("identifier type must be slice or sliver")
+	}
+}
+
+func (s Service) GetDeployments(
+	ctx context.Context,
+	identifier identifiers.Identifier,
+) ([]appsv1.Deployment, error) {
+	switch identifier.ResourceType {
+	case identifiers.ResourceTypeSlice:
+		labelSelector, err := s.LabelSelector(identifier)
+		if err != nil {
+			return nil, err
+		}
+		deployments, err := s.Deployments().List(ctx, metav1.ListOptions{
+			LabelSelector: labelSelector,
+		})
+		if err != nil {
+			return nil, err
+		}
+		return deployments.Items, nil
+	case identifiers.ResourceTypeSliver:
+		deployment, err := s.Deployments().Get(ctx, identifier.ResourceName, metav1.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+		return []appsv1.Deployment{*deployment}, nil
+	default:
+		return nil, fmt.Errorf("identifier type must be slice or sliver")
+	}
+}
+
+func (s Service) GetPods(ctx context.Context, identifier identifiers.Identifier) ([]corev1.Pod, error) {
+	switch identifier.ResourceType {
+	case identifiers.ResourceTypeSlice:
+		labelSelector, err := s.LabelSelector(identifier)
+		if err != nil {
+			return nil, err
+		}
+		pods, err := s.Pods().List(ctx, metav1.ListOptions{
+			LabelSelector: labelSelector,
+		})
+		if err != nil {
+			return nil, err
+		}
+		return pods.Items, nil
+	case identifiers.ResourceTypeSliver:
+		pod, err := s.Pods().Get(ctx, identifier.ResourceName, metav1.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+		return []corev1.Pod{*pod}, nil
+	default:
+		return nil, fmt.Errorf("identifier type must be slice or sliver")
+	}
+}
+
+func (s Service) LabelSelector(sliceIdentifier identifiers.Identifier) (string, error) {
+	sliceHash, err := naming.SliceHash(sliceIdentifier)
+	if err != nil {
+		return "", nil
+	}
+	return fmt.Sprintf("%s=%s", fed4fireSliceHash, sliceHash), nil
 }
 
 type Code struct {

@@ -9,8 +9,11 @@ import (
 	"github.com/EdgeNet-project/fed4fire/pkg/identifiers"
 )
 
-func SliceHash(sliceIdentifier identifiers.Identifier) string {
-	return "h" + sha512Sum(sliceIdentifier.URN())[:16]
+func SliceHash(sliceIdentifier identifiers.Identifier) (string, error) {
+	if sliceIdentifier.ResourceType != identifiers.ResourceTypeSlice {
+		return "", fmt.Errorf("URN resource type must be `slice`")
+	}
+	return "h" + sha512Sum(sliceIdentifier.URN())[:16], nil
 }
 
 func SliverName(sliceIdentifier identifiers.Identifier, clientId string) (string, error) {

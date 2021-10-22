@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/EdgeNet-project/fed4fire/pkg/naming"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -43,7 +42,7 @@ func (s *Service) Delete(r *http.Request, args *DeleteArgs, reply *DeleteReply) 
 	// https://groups.geni.net/geni/wiki/GAPI_AM_API_V3/CommonConcepts#SliverAllocationStates
 	// TODO: Check credentials
 	// TODO: Check permissions/slice authority
-	deploymentsToDelete := make([]appsv1.Deployment, 0)
+	toDelete := make([]appsv1.Deployment, 0)
 	slivers := make([]Sliver, 0)
 	for _, urn := range args.URNs {
 		identifier, err := identifiers.Parse(urn)
@@ -51,30 +50,15 @@ func (s *Service) Delete(r *http.Request, args *DeleteArgs, reply *DeleteReply) 
 			// TODO: Handle error
 			fmt.Println(err)
 		}
-		if identifier.ResourceType == identifiers.ResourceTypeSlice {
-			sliceHash := naming.SliceHash(*identifier)
-			labelSelector := fmt.Sprintf("%s=%s", fed4fireSliceHash, sliceHash)
-			deployments, err := s.Deployments().List(r.Context(), metav1.ListOptions{
-				LabelSelector: labelSelector,
-			})
-			if err != nil {
-				// TODO: Handle error
-				fmt.Println(err)
-			}
-			deploymentsToDelete = append(deploymentsToDelete, deployments.Items...)
-		} else if identifier.ResourceType == identifiers.ResourceTypeSliver {
-			deployment, err := s.Deployments().Get(r.Context(), identifier.ResourceName, metav1.GetOptions{})
-			if err != nil {
-				// TODO: Handle error
-				fmt.Println(err)
-			}
-			deploymentsToDelete = append(deploymentsToDelete, *deployment)
-		} else {
-			// TODO: Raise error for invalid resource type.
+		deployments, err := s.GetDeployments(r.Context(), *identifier)
+		if err != nil {
+			// TODO: Handle error
+			fmt.Println(err)
 		}
+		toDelete = append(toDelete, deployments...)
 	}
 
-	for _, deployment := range deploymentsToDelete {
+	for _, deployment := range toDelete {
 		sliver := Sliver{
 			URN:              deployment.Annotations[fed4fireSliver],
 			Expires:          deployment.Annotations[fed4fireExpires],

@@ -139,7 +139,8 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 	// Create the sliver resources and rollback them in case of failure
 	success := true
 	for _, res := range resources {
-		deployment, err := s.Deployments().Create(r.Context(), res.Deployment, metav1.CreateOptions{})
+		deployment, err := s.Deployments().
+			Create(r.Context(), res.Deployment, metav1.CreateOptions{})
 		if err == nil {
 			klog.InfoS("Created deployment", "name", res.Deployment.Name)
 		} else if !errors.IsAlreadyExists(err) {
@@ -257,7 +258,10 @@ func resourcesForRspec(
 	if err != nil {
 		return nil, err
 	}
-	sliceHash := naming.SliceHash(sliceIdentifier)
+	sliceHash, err := naming.SliceHash(sliceIdentifier)
+	if err != nil {
+		return nil, err
+	}
 	sliverName, err := naming.SliverName(sliceIdentifier, node.ClientID)
 	if err != nil {
 		return nil, err
@@ -349,16 +353,13 @@ func resourcesForRspec(
 
 	service := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        sliverName,
-			Annotations: annotations,
-			Labels: map[string]string{
-				fed4fireSliceHash:  sliceHash,
-				fed4fireSliverName: sliverName,
-			},
+			Name: sliverName,
 		},
 		Spec: corev1.ServiceSpec{
-			Type:  corev1.ServiceTypeNodePort,
-			Ports: []corev1.ServicePort{{Port: 22}},
+			Type: corev1.ServiceTypeNodePort,
+			Ports: []corev1.ServicePort{
+				{Port: 22},
+			},
 			Selector: map[string]string{
 				fed4fireSliverName: sliverName,
 			},
