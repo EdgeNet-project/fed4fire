@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/EdgeNet-project/fed4fire/pkg/constants"
+
 	"github.com/EdgeNet-project/fed4fire/pkg/utils"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -32,8 +34,8 @@ func TestDelete_Slice(t *testing.T) {
 		t.Errorf("Allocate() = %v; want nil", err)
 	}
 	got := allocateReply.Data.Code.Code
-	if got != geniCodeSuccess {
-		t.Errorf("Code = %d; want %d", got, geniCodeSuccess)
+	if got != constants.GeniCodeSuccess {
+		t.Errorf("Code = %d; want %d", got, constants.GeniCodeSuccess)
 	}
 	deleteArgs := &DeleteArgs{
 		URNs:        []string{testSliceIdentifier.URN()},
@@ -45,8 +47,8 @@ func TestDelete_Slice(t *testing.T) {
 		t.Errorf("Allocate() = %v; want nil", err)
 	}
 	got = deleteReply.Data.Code.Code
-	if got != geniCodeSuccess {
-		t.Errorf("Code = %d; want %d", got, geniCodeSuccess)
+	if got != constants.GeniCodeSuccess {
+		t.Errorf("Code = %d; want %d", got, constants.GeniCodeSuccess)
 	}
 	// Verify deployments
 	deployments, err := s.Deployments().List(context.TODO(), v1.ListOptions{})

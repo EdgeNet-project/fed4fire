@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/EdgeNet-project/fed4fire/pkg/constants"
+
 	"github.com/EdgeNet-project/fed4fire/pkg/identifiers"
 
 	"github.com/EdgeNet-project/fed4fire/pkg/sfa"
@@ -62,7 +64,7 @@ func testService() *Service {
 
 func testRequest() *http.Request {
 	r, _ := http.NewRequestWithContext(context.TODO(), "", "", nil)
-	r.Header.Set(utils.HttpHeaderUser, testUserIdentifier.URN())
+	r.Header.Set(constants.HttpHeaderUser, testUserIdentifier.URN())
 	return r
 }
 
@@ -140,7 +142,7 @@ func createCredential(owner identifiers.Identifier, target identifiers.Identifie
 		panic(err)
 	}
 	return Credential{
-		Type:    geniCredentialTypeSfa,
+		Type:    constants.GeniCredentialTypeSfa,
 		Version: "3",
 		Value:   string(signedCredentialBytes),
 	}

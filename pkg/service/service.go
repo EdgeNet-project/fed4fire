@@ -6,9 +6,11 @@ import (
 	"encoding/xml"
 	"fmt"
 	"html"
+	"time"
+
+	"github.com/EdgeNet-project/fed4fire/pkg/constants"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"time"
 
 	"github.com/EdgeNet-project/fed4fire/pkg/naming"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -58,7 +60,10 @@ func (s Service) Services() typedcorev1.ServiceInterface {
 	return s.KubernetesClient.CoreV1().Services(s.Namespace)
 }
 
-func (s Service) GetConfigMaps(ctx context.Context, identifier identifiers.Identifier) ([]corev1.ConfigMap, error) {
+func (s Service) GetConfigMaps(
+	ctx context.Context,
+	identifier identifiers.Identifier,
+) ([]corev1.ConfigMap, error) {
 	switch identifier.ResourceType {
 	case identifiers.ResourceTypeSlice:
 		labelSelector, err := s.LabelSelector(identifier)
@@ -111,7 +116,10 @@ func (s Service) GetDeployments(
 	}
 }
 
-func (s Service) GetPods(ctx context.Context, identifier identifiers.Identifier) ([]corev1.Pod, error) {
+func (s Service) GetPods(
+	ctx context.Context,
+	identifier identifiers.Identifier,
+) ([]corev1.Pod, error) {
 	switch identifier.ResourceType {
 	case identifiers.ResourceTypeSlice:
 		labelSelector, err := s.LabelSelector(identifier)
@@ -141,7 +149,7 @@ func (s Service) LabelSelector(sliceIdentifier identifiers.Identifier) (string, 
 	if err != nil {
 		return "", nil
 	}
-	return fmt.Sprintf("%s=%s", fed4fireSliceHash, sliceHash), nil
+	return fmt.Sprintf("%s=%s", constants.Fed4FireSliceHash, sliceHash), nil
 }
 
 type Code struct {
@@ -191,7 +199,7 @@ type Options struct {
 }
 
 func (c Credential) ValidatedSFA(trustedCertificates [][]byte) (*sfa.Credential, error) {
-	if c.Type != geniCredentialTypeSfa {
+	if c.Type != constants.GeniCredentialTypeSfa {
 		return nil, fmt.Errorf("credential type is not geni_sfa")
 	}
 	val := []byte(html.UnescapeString(c.Value))
@@ -250,96 +258,3 @@ func FindMatchingCredential(
 	}
 	return nil, fmt.Errorf("no matching credential found")
 }
-
-// Default value for new deployments.
-const (
-	defaultCpuRequest    = "0.01"
-	defaultMemoryRequest = "16Mi"
-)
-
-// Names for Kubernetes objects labels and annotations.
-const (
-	fed4fireClientId   = "fed4fire.eu/client-id"
-	fed4fireExpires    = "fed4fire.eu/expires"
-	fed4fireSlice      = "fed4fire.eu/slice"
-	fed4fireSliceHash  = "fed4fire.eu/slice-hash"
-	fed4fireSliver     = "fed4fire.eu/sliver"
-	fed4fireSliverName = "fed4fire.eu/sliver-name"
-	fed4fireUser       = "fed4fire.eu/user"
-)
-
-// https://groups.geni.net/geni/attachment/wiki/GAPI_AM_API_V3/CommonConcepts/geni-error-codes.xml
-const (
-	// Success
-	geniCodeSuccess = 0
-	// Bad Arguments: malformed
-	geniCodeBadargs = 1
-	// Error (other)
-	geniCodeError = 2
-	// Operation Forbidden: eg supplied credentials do not provide sufficient privileges (on the given slice)
-	geniCodeForbidden = 3
-	// Bad Version (eg of RSpec)
-	geniCodeBadversion = 4
-	// Server Error
-	geniCodeServerror = 5
-	// Too Big (eg request RSpec)
-	geniCodeToobig = 6
-	// Operation Refused
-	geniCodeRefused = 7
-	// Operation Timed Out
-	geniCodeTimedout = 8
-	// Database Error
-	geniCodeDberror = 9
-	// RPC Error
-	geniCodeRpcerror = 10
-	// Unavailable (eg server in lockdown)
-	geniCodeUnavailable = 11
-	// Search Failed (eg for slice)
-	geniCodeSearchfailed = 12
-	// Operation Unsupported
-	geniCodeUnsupported = 13
-	// Busy (resource, slice, or server); try again later
-	geniCodeBusy = 14
-	// Expired (eg slice)
-	geniCodeExpired = 15
-	// In Progress
-	geniCodeInprogress = 16
-	// Already Exists (eg slice)
-	geniCodeAlreadyexists = 17
-)
-
-// https://groups.geni.net/geni/wiki/GAPI_AM_API_V3/CommonConcepts#SliverAllocationStates
-const (
-	// The sliver does not exist. This is the small black circle in typical state diagrams.
-	geniStateUnallocated = "geni_unallocated"
-	// The sliver exists, defines particular resources, and is in a slice.
-	// The aggregate has not (if possible) done any time consuming or expensive work to instantiate the resources,
-	// provision them, or make it difficult to revert the slice to the state prior to allocating this sliver.
-	// This state is what the aggregate is offering the experimenter.
-	geniStateAllocated = "geni_allocated"
-	// The aggregate has started instantiating resources, and otherwise making changes to resources
-	// and the slice to make the resources available to the experimenter.
-	// At this point, operational states are valid to specify further when
-	// the resources are available for experimenter use.
-	geniStateProvisioned = "geni_provisioned"
-)
-
-const (
-	// Performing multiple Allocates without a delete is an error condition because the aggregate
-	// only supports a single sliver per slice or does not allow incrementally adding new slivers.
-	geniAllocateSingle = "geni_single"
-	// Additional calls to Allocate must be disjoint from slivers allocated with previous calls
-	// (no references or dependencies on existing slivers).
-	// The topologies must be disjoint in that there can be no connection or other reference
-	// from one topology to the other.
-	geniAllocateDisjoint = "geni_disjoint"
-	// Multiple slivers can exist and be incrementally added, including those which connect or overlap in some way.
-	geniAllocateMany = "geny_many"
-)
-
-const (
-	// https://groups.geni.net/geni/wiki/TIEDABACCredential
-	geniCredentialTypeAbac = "geni_abac"
-	// https://groups.geni.net/geni/wiki/GeniApiCredentials
-	geniCredentialTypeSfa = "geni_sfa"
-)

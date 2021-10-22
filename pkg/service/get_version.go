@@ -1,6 +1,10 @@
 package service
 
-import "net/http"
+import (
+	"net/http"
+
+	"github.com/EdgeNet-project/fed4fire/pkg/constants"
+)
 
 type APIVersions struct {
 	Three string `xml:"3"`
@@ -74,12 +78,12 @@ func (s *Service) GetVersion(r *http.Request, args *GetVersionArgs, reply *GetVe
 	}
 	reply.Data.Value.CredentialTypes = []CredentialType{
 		{
-			Type:    geniCredentialTypeSfa,
+			Type:    constants.GeniCredentialTypeSfa,
 			Version: "3",
 		},
 	}
 	reply.Data.Value.SingleAllocation = 0
-	reply.Data.Value.Allocate = geniAllocateMany
-	reply.Data.Code.Code = geniCodeSuccess
+	reply.Data.Value.Allocate = constants.GeniAllocateMany
+	reply.Data.Code.Code = constants.GeniCodeSuccess
 	return nil
 }

@@ -5,6 +5,8 @@ import (
 	"encoding/xml"
 	"testing"
 
+	"github.com/EdgeNet-project/fed4fire/pkg/constants"
+
 	"github.com/EdgeNet-project/fed4fire/pkg/utils"
 
 	v1 "k8s.io/api/core/v1"
@@ -25,8 +27,8 @@ func TestListResources_BadRspecVersion(t *testing.T) {
 		t.Errorf("GetVersion() = %v; want nil", err)
 	}
 	got := reply.Data.Code.Code
-	if got != geniCodeBadversion {
-		t.Errorf("Code = %d; want %d", got, geniCodeBadversion)
+	if got != constants.GeniCodeBadversion {
+		t.Errorf("Code = %d; want %d", got, constants.GeniCodeBadversion)
 	}
 }
 
@@ -39,8 +41,8 @@ func TestListResources_MissingRspecVersion(t *testing.T) {
 		t.Errorf("GetVersion() = %v; want nil", err)
 	}
 	got := reply.Data.Code.Code
-	if got != geniCodeBadargs {
-		t.Errorf("Code = %d; want %d", got, geniCodeBadargs)
+	if got != constants.GeniCodeBadargs {
+		t.Errorf("Code = %d; want %d", got, constants.GeniCodeBadargs)
 	}
 }
 
@@ -58,8 +60,8 @@ func TestListResources_NoNodes(t *testing.T) {
 	if err != nil {
 		t.Errorf("GetVersion() = %v; want nil", err)
 	}
-	if got := reply.Data.Code.Code; got != geniCodeSuccess {
-		t.Errorf("Code = %d; want %d", got, geniCodeSuccess)
+	if got := reply.Data.Code.Code; got != constants.GeniCodeSuccess {
+		t.Errorf("Code = %d; want %d", got, constants.GeniCodeSuccess)
 	}
 	v := rspec.Rspec{}
 	_ = xml.Unmarshal([]byte(reply.Data.Value), &v)
@@ -93,8 +95,8 @@ func TestListResources_Nodes(t *testing.T) {
 	if err != nil {
 		t.Errorf("GetVersion() = %v; want nil", err)
 	}
-	if got := reply.Data.Code.Code; got != geniCodeSuccess {
-		t.Errorf("Code = %d; want %d", got, geniCodeSuccess)
+	if got := reply.Data.Code.Code; got != constants.GeniCodeSuccess {
+		t.Errorf("Code = %d; want %d", got, constants.GeniCodeSuccess)
 	}
 	v := rspec.Rspec{}
 	_ = xml.Unmarshal([]byte(reply.Data.Value), &v)
@@ -130,8 +132,8 @@ func TestListResources_NodesAvailableCompressed(t *testing.T) {
 	if err != nil {
 		t.Errorf("GetVersion() = %v; want nil", err)
 	}
-	if got := reply.Data.Code.Code; got != geniCodeSuccess {
-		t.Errorf("Code = %d; want %d", got, geniCodeSuccess)
+	if got := reply.Data.Code.Code; got != constants.GeniCodeSuccess {
+		t.Errorf("Code = %d; want %d", got, constants.GeniCodeSuccess)
 	}
 	v := rspec.Rspec{}
 	_ = xml.Unmarshal(utils.DecompressZlibBase64(reply.Data.Value), &v)

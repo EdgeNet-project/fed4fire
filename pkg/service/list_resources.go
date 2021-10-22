@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/EdgeNet-project/fed4fire/pkg/constants"
+
 	"github.com/EdgeNet-project/fed4fire/pkg/identifiers"
 	"github.com/EdgeNet-project/fed4fire/pkg/rspec"
 	"github.com/EdgeNet-project/fed4fire/pkg/utils"
@@ -52,7 +54,7 @@ func (v *ListResourcesReply) SetAndLogError(
 	keysAndValues ...interface{},
 ) error {
 	klog.ErrorS(err, msg, keysAndValues...)
-	v.Data.Code.Code = geniCodeError
+	v.Data.Code.Code = constants.GeniCodeError
 	v.Data.Value = fmt.Sprintf("%s: %s", msg, err)
 	return nil
 }
@@ -67,12 +69,12 @@ func (s *Service) ListResources(
 	reply *ListResourcesReply,
 ) error {
 	if args.Options.RspecVersion.Type == "" {
-		reply.Data.Code.Code = geniCodeBadargs
+		reply.Data.Code.Code = constants.GeniCodeBadargs
 		return nil
 	}
 	if strings.ToLower(args.Options.RspecVersion.Type) != "geni" ||
 		args.Options.RspecVersion.Version != "3" {
-		reply.Data.Code.Code = geniCodeBadversion
+		reply.Data.Code.Code = constants.GeniCodeBadversion
 		return nil
 	}
 
@@ -100,7 +102,7 @@ func (s *Service) ListResources(
 		reply.Data.Value = string(xml_)
 	}
 
-	reply.Data.Code.Code = geniCodeSuccess
+	reply.Data.Code.Code = constants.GeniCodeSuccess
 	return nil
 }
 

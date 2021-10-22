@@ -2,6 +2,8 @@ package service
 
 import (
 	"testing"
+
+	"github.com/EdgeNet-project/fed4fire/pkg/constants"
 )
 
 func TestGetVersion(t *testing.T) {
@@ -12,8 +14,8 @@ func TestGetVersion(t *testing.T) {
 	if err != nil {
 		t.Errorf("GetVersion() = %v; want nil", err)
 	}
-	if got := reply.Data.Code.Code; got != geniCodeSuccess {
-		t.Errorf("Code = %d; want %d", got, geniCodeSuccess)
+	if got := reply.Data.Code.Code; got != constants.GeniCodeSuccess {
+		t.Errorf("Code = %d; want %d", got, constants.GeniCodeSuccess)
 	}
 	if got := len(reply.Data.Value.AdRspecVersions); got != 1 {
 		t.Errorf("len(AdRspecVersions) = %d; want 1", got)

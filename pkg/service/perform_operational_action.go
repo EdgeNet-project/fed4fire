@@ -2,12 +2,13 @@ package service
 
 import (
 	"fmt"
+	"net/http"
+	"strings"
+
 	"github.com/EdgeNet-project/fed4fire/pkg/identifiers"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
-	"net/http"
-	"strings"
 )
 
 type PerformOperationalActionArgs struct {
@@ -83,6 +84,8 @@ func (s *Service) PerformOperationalAction(
 			fmt.Println(err)
 		}
 	}
+	// TODO: Explain why we do this
+	// TODO: Delete pod only if keys have changed?
 	for _, pod := range pods {
 		err := s.Pods().Delete(r.Context(), pod.Name, metav1.DeleteOptions{})
 		if err == nil {

@@ -8,11 +8,6 @@ import (
 	"strings"
 )
 
-const (
-	HttpHeaderCertificate = "X-Fed4Fire-Certificate"
-	HttpHeaderUser        = "X-Fed4Fire-User"
-)
-
 func GetUserUrn(pemEncodedCert []byte) (string, error) {
 	block, _ := pem.Decode([]byte(pemEncodedCert))
 	cert, err := x509.ParseCertificate(block.Bytes)

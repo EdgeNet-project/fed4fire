@@ -3,6 +3,8 @@ package service
 import (
 	"net/http"
 
+	"github.com/EdgeNet-project/fed4fire/pkg/constants"
+
 	"k8s.io/klog/v2"
 )
 
@@ -25,7 +27,7 @@ type ProvisionReply struct {
 
 func (v *ProvisionReply) SetAndLogError(err error, msg string, keysAndValues ...interface{}) {
 	klog.ErrorS(err, msg, keysAndValues...)
-	v.Data.Code.Code = geniCodeError
+	v.Data.Code.Code = constants.GeniCodeError
 	// TODO
 	// v.Data.Value = fmt.Sprintf("%s: %s", msg, err)
 }

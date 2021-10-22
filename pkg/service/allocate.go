@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/EdgeNet-project/fed4fire/pkg/constants"
+
 	"github.com/EdgeNet-project/fed4fire/pkg/naming"
 
 	"github.com/EdgeNet-project/fed4fire/pkg/utils"
@@ -22,11 +24,6 @@ import (
 	"k8s.io/klog/v2"
 	"k8s.io/utils/pointer"
 )
-
-type AllocateOptions struct {
-	// Optional. Requested expiration of all new slivers, may be ignored by aggregates.
-	EndTime string `xml:"geni_end_time"`
-}
 
 type AllocateArgs struct {
 	SliceURN    string
@@ -46,9 +43,14 @@ type AllocateReply struct {
 	}
 }
 
+type AllocateOptions struct {
+	// Optional. Requested expiration of all new slivers, may be ignored by aggregates.
+	EndTime string `xml:"geni_end_time"`
+}
+
 func (v *AllocateReply) SetAndLogError(err error, msg string, keysAndValues ...interface{}) error {
 	klog.ErrorS(err, msg, keysAndValues...)
-	v.Data.Code.Code = geniCodeError
+	v.Data.Code.Code = constants.GeniCodeError
 	v.Data.Value.Error = fmt.Sprintf("%s: %s", msg, err)
 	return nil
 }
@@ -86,7 +88,7 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 	// This method can be described as creating an instance of the state machine for each sliver.
 	// If the aggregate cannot fully satisfy the request, the whole request fails.
 	// https://groups.geni.net/geni/wiki/GAPI_AM_API_V3/CommonConcepts#SliverAllocationStates
-	userIdentifier, err := identifiers.Parse(r.Header.Get(utils.HttpHeaderUser))
+	userIdentifier, err := identifiers.Parse(r.Header.Get(constants.HttpHeaderUser))
 	if err != nil {
 		return reply.SetAndLogError(err, "Failed to parse user URN")
 	}
@@ -192,9 +194,9 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 	returnRspec := rspec.Rspec{Type: rspec.RspecTypeRequest}
 	for i, res := range resources {
 		sliver := Sliver{
-			URN:              res.Deployment.Annotations[fed4fireSliver],
-			Expires:          res.Deployment.Annotations[fed4fireExpires],
-			AllocationStatus: geniStateAllocated,
+			URN:              res.Deployment.Annotations[constants.Fed4FireSliver],
+			Expires:          res.Deployment.Annotations[constants.Fed4FireExpires],
+			AllocationStatus: constants.GeniStateAllocated,
 		}
 		reply.Data.Value.Slivers = append(reply.Data.Value.Slivers, sliver)
 		returnRspec.Nodes = append(returnRspec.Nodes, requestRspec.Nodes[i])
@@ -205,7 +207,7 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 		return reply.SetAndLogError(err, "Failed to serialize response")
 	}
 	reply.Data.Value.Rspec = string(xml_)
-	reply.Data.Code.Code = geniCodeSuccess
+	reply.Data.Code.Code = constants.GeniCodeSuccess
 	return nil
 }
 
@@ -268,23 +270,21 @@ func resourcesForRspec(
 	}
 	sliverIdentifier := authorityIdentifier.Copy(identifiers.ResourceTypeSliver, sliverName)
 	annotations := map[string]string{
-		fed4fireClientId: node.ClientID,
-		// TODO: Create vacuum job.
-		fed4fireExpires: (time.Now().Add(24 * time.Hour)).Format(time.RFC3339),
-		fed4fireUser:    userIdentifier.URN(),
-		fed4fireSlice:   sliceIdentifier.URN(),
-		fed4fireSliver:  sliverIdentifier.URN(),
+		constants.Fed4FireClientId: node.ClientID,
+		constants.Fed4FireExpires:  (time.Now().Add(24 * time.Hour)).Format(time.RFC3339),
+		constants.Fed4FireUser:     userIdentifier.URN(),
+		constants.Fed4FireSlice:    sliceIdentifier.URN(),
+		constants.Fed4FireSliver:   sliverIdentifier.URN(),
 	}
 	labels := map[string]string{
-		fed4fireSliceHash:  sliceHash,
-		fed4fireSliverName: sliverName,
+		constants.Fed4FireSliceHash:  sliceHash,
+		constants.Fed4FireSliverName: sliverName,
 	}
 
 	configMap := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        sliverName,
-			Annotations: annotations,
-			Labels:      labels,
+			Name:   sliverName,
+			Labels: labels,
 		},
 		Data: map[string]string{
 			"authorized_keys": "",
@@ -301,7 +301,7 @@ func resourcesForRspec(
 			Replicas: pointer.Int32Ptr(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					fed4fireSliverName: sliverName,
+					constants.Fed4FireSliverName: sliverName,
 				},
 			},
 			Template: corev1.PodTemplateSpec{
@@ -320,8 +320,12 @@ func resourcesForRspec(
 									corev1.ResourceMemory: resource.MustParse(memoryLimit),
 								},
 								Requests: map[corev1.ResourceName]resource.Quantity{
-									corev1.ResourceCPU:    resource.MustParse(defaultCpuRequest),
-									corev1.ResourceMemory: resource.MustParse(defaultMemoryRequest),
+									corev1.ResourceCPU: resource.MustParse(
+										constants.DefaultCpuRequest,
+									),
+									corev1.ResourceMemory: resource.MustParse(
+										constants.DefaultMemoryRequest,
+									),
 								},
 							},
 							VolumeMounts: []corev1.VolumeMount{
@@ -353,7 +357,8 @@ func resourcesForRspec(
 
 	service := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: sliverName,
+			Name:   sliverName,
+			Labels: labels,
 		},
 		Spec: corev1.ServiceSpec{
 			Type: corev1.ServiceTypeNodePort,
@@ -361,7 +366,7 @@ func resourcesForRspec(
 				{Port: 22},
 			},
 			Selector: map[string]string{
-				fed4fireSliverName: sliverName,
+				constants.Fed4FireSliverName: sliverName,
 			},
 		},
 	}

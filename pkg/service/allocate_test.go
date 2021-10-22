@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/EdgeNet-project/fed4fire/pkg/constants"
+
 	"github.com/EdgeNet-project/fed4fire/pkg/utils"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -29,8 +31,8 @@ func TestAllocate_Single(t *testing.T) {
 		t.Errorf("Allocate() = %v; want nil", err)
 	}
 	got := reply.Data.Code.Code
-	if got != geniCodeSuccess {
-		t.Errorf("Code = %d; want %d", got, geniCodeSuccess)
+	if got != constants.GeniCodeSuccess {
+		t.Errorf("Code = %d; want %d", got, constants.GeniCodeSuccess)
 	}
 	deployments, err := s.Deployments().List(context.TODO(), v1.ListOptions{})
 	utils.Check(err)
@@ -66,8 +68,8 @@ func TestAllocate_Many(t *testing.T) {
 		t.Errorf("Allocate() = %v; want nil", err)
 	}
 	got := reply.Data.Code.Code
-	if got != geniCodeSuccess {
-		t.Errorf("Code = %d; want %d", got, geniCodeSuccess)
+	if got != constants.GeniCodeSuccess {
+		t.Errorf("Code = %d; want %d", got, constants.GeniCodeSuccess)
 	}
 	// Second request with the first node repeated and a new node
 	rs = `
@@ -91,8 +93,8 @@ func TestAllocate_Many(t *testing.T) {
 		t.Errorf("Allocate() = %v; want nil", err)
 	}
 	got = reply.Data.Code.Code
-	if got != geniCodeSuccess {
-		t.Errorf("Code = %d; want %d", got, geniCodeSuccess)
+	if got != constants.GeniCodeSuccess {
+		t.Errorf("Code = %d; want %d", got, constants.GeniCodeSuccess)
 	}
 	// Verify deployments
 	deployments, err := s.Deployments().List(context.TODO(), v1.ListOptions{})

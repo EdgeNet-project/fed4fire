@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/EdgeNet-project/fed4fire/pkg/constants"
+
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -27,7 +29,7 @@ type DeleteReply struct {
 
 func (v *DeleteReply) SetAndLogError(err error, msg string, keysAndValues ...interface{}) {
 	klog.ErrorS(err, msg, keysAndValues...)
-	v.Data.Code.Code = geniCodeError
+	v.Data.Code.Code = constants.GeniCodeError
 	// TODO
 	// v.Data.Value = fmt.Sprintf("%s: %s", msg, err)
 }
@@ -60,9 +62,9 @@ func (s *Service) Delete(r *http.Request, args *DeleteArgs, reply *DeleteReply) 
 
 	for _, deployment := range toDelete {
 		sliver := Sliver{
-			URN:              deployment.Annotations[fed4fireSliver],
-			Expires:          deployment.Annotations[fed4fireExpires],
-			AllocationStatus: geniStateUnallocated,
+			URN:              deployment.Annotations[constants.Fed4FireSliver],
+			Expires:          deployment.Annotations[constants.Fed4FireExpires],
+			AllocationStatus: constants.GeniStateUnallocated,
 		}
 		err := s.Deployments().Delete(r.Context(), deployment.Name, metav1.DeleteOptions{})
 		if err != nil {
@@ -76,6 +78,6 @@ func (s *Service) Delete(r *http.Request, args *DeleteArgs, reply *DeleteReply) 
 	}
 
 	reply.Data.Value = slivers
-	reply.Data.Code.Code = geniCodeSuccess
+	reply.Data.Code.Code = constants.GeniCodeSuccess
 	return nil
 }

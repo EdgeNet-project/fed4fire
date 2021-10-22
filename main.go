@@ -7,6 +7,8 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/EdgeNet-project/fed4fire/pkg/constants"
+	"github.com/EdgeNet-project/fed4fire/pkg/gc"
 	"github.com/EdgeNet-project/fed4fire/pkg/identifiers"
 	"github.com/EdgeNet-project/fed4fire/pkg/service"
 	"github.com/EdgeNet-project/fed4fire/pkg/utils"
@@ -19,6 +21,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 )
 
 var showHelp bool
@@ -32,10 +35,10 @@ var serverAddr string
 var trustedCerts utils.ArrayFlags
 
 func beforeFunc(i *rpc.RequestInfo) {
-	escapedCert := i.Request.Header.Get(utils.HttpHeaderCertificate)
+	escapedCert := i.Request.Header.Get(constants.HttpHeaderCertificate)
 	urn, err := utils.GetUserUrnFromEscapedCert(escapedCert)
 	if err == nil {
-		i.Request.Header.Set(utils.HttpHeaderUser, urn)
+		i.Request.Header.Set(constants.HttpHeaderUser, urn)
 	} else {
 		klog.ErrorS(err, "Failed to get user URN from header")
 	}
@@ -46,7 +49,7 @@ func beforeFunc(i *rpc.RequestInfo) {
 		"uri", i.Request.RequestURI,
 		"rpc-method", i.Method,
 		"user-agent", i.Request.UserAgent(),
-		"user-urn", i.Request.Header.Get(utils.HttpHeaderUser),
+		"user-urn", i.Request.Header.Get(constants.HttpHeaderUser),
 	)
 }
 
@@ -114,6 +117,12 @@ func main() {
 	RPC.RegisterBeforeFunc(beforeFunc)
 	RPC.RegisterCodec(xmlrpcCodec, "text/xml")
 	utils.Check(RPC.RegisterService(s, ""))
+
+	gc.GC{
+		Client:    kubeclient,
+		Interval:  5 * time.Second,
+		Namespace: namespace,
+	}.Start()
 
 	klog.InfoS("Listening", "address", serverAddr)
 	utils.Check(http.ListenAndServe(serverAddr, RPC))
