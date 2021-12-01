@@ -22,7 +22,7 @@ require (
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	k8s.io/api v0.22.2
-	k8s.io/apimachinery v0.22.2
+	k8s.io/apimachinery v0.22.4
 	k8s.io/client-go v0.22.2
 	k8s.io/klog/v2 v2.20.0
 	k8s.io/utils v0.0.0-20210820185131-d34e5cb4466e
