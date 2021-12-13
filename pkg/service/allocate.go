@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"encoding/xml"
 	"fmt"
 	"html"
@@ -139,56 +140,25 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 	}
 
 	// Create the sliver resources and rollback them in case of failure
-	success := true
+	var createResourcesError error
 	for _, res := range resources {
-		deployment, err := s.Deployments().
-			Create(r.Context(), res.Deployment, metav1.CreateOptions{})
-		if err == nil {
-			klog.InfoS("Created deployment", "name", res.Deployment.Name)
-		} else if !errors.IsAlreadyExists(err) {
-			_ = reply.SetAndLogError(err, "Failed to create deployment", "name", res.Deployment.Name)
-			success = false
-		}
-		if deployment != nil {
-			ownerReference := metav1.OwnerReference{
-				APIVersion: "apps/v1",
-				Kind:       "Deployment",
-				Name:       deployment.Name,
-				UID:        deployment.UID,
-			}
-			res.ConfigMap.OwnerReferences = append(res.ConfigMap.OwnerReferences, ownerReference)
-			_, err = s.ConfigMaps().Create(r.Context(), res.ConfigMap, metav1.CreateOptions{})
-			if err == nil {
-				klog.InfoS("Created configmap", "name", res.ConfigMap.Name)
-			} else if !errors.IsAlreadyExists(err) {
-				_ = reply.SetAndLogError(err, "Failed to create configmap", "name", res.ConfigMap.Name)
-				success = false
-			}
-			res.Service.OwnerReferences = append(res.Service.OwnerReferences, ownerReference)
-			_, err = s.Services().Create(r.Context(), res.Service, metav1.CreateOptions{})
-			if err == nil {
-				klog.InfoS("Created service", "name", res.Service.Name)
-			} else if !errors.IsAlreadyExists(err) {
-				_ = reply.SetAndLogError(err, "Failed to create configmap", "name", res.Service.Name)
-				success = false
-			}
-		}
-		if !success {
+		createResourcesError = createResources(r.Context(), *s, *res)
+		if createResourcesError != nil {
 			break
 		}
+		klog.InfoS("TODO log success")
 	}
 
 	// Rollback in case of failure
-	if !success {
+	if createResourcesError != nil {
 		for _, res := range resources {
-			err = s.Deployments().Delete(r.Context(), res.Deployment.Name, metav1.DeleteOptions{})
-			if err == nil {
-				klog.InfoS("Deleted deployment", "name", res.Deployment.Name)
+			if deleteResources(r.Context(), *s, *res) == nil {
+				klog.InfoS("Deleted resources", "name", res.Deployment.Name)
 			} else {
-				klog.InfoS("Failed to delete deployment", "name", res.Deployment.Name)
+				klog.InfoS("Failed to delete resources", "name", res.Deployment.Name)
 			}
 		}
-		return nil
+		return reply.SetAndLogError(err, "Failed to create resources")
 	}
 
 	returnRspec := rspec.Rspec{Type: rspec.RspecTypeRequest}
@@ -215,6 +185,49 @@ type sliverResources struct {
 	ConfigMap  *corev1.ConfigMap
 	Deployment *appsv1.Deployment
 	Service    *corev1.Service
+}
+
+func createResources(context context.Context, service Service, resources sliverResources) error {
+	deployment, err := service.Deployments().Create(context, resources.Deployment, metav1.CreateOptions{})
+	if err != nil && errors.IsAlreadyExists(err) {
+		deployment, err = service.Deployments().Get(context, resources.Deployment.Name, metav1.GetOptions{})
+	}
+	if err != nil {
+		return err
+	}
+	ownerReference := metav1.OwnerReference{
+		APIVersion: "apps/v1",
+		Kind:       "Deployment",
+		Name:       deployment.Name,
+		UID:        deployment.UID,
+	}
+	resources.ConfigMap.OwnerReferences = append(resources.ConfigMap.OwnerReferences, ownerReference)
+	_, err = service.ConfigMaps().Create(context, resources.ConfigMap, metav1.CreateOptions{})
+	if err != nil && !errors.IsAlreadyExists(err) {
+		return err
+	}
+	resources.Service.OwnerReferences = append(resources.Service.OwnerReferences, ownerReference)
+	_, err = service.Services().Create(context, resources.Service, metav1.CreateOptions{})
+	if err != nil && !errors.IsAlreadyExists(err) {
+		return err
+	}
+	return nil
+}
+
+func deleteResources(context context.Context, service Service, resources sliverResources) error {
+	err := service.Services().Delete(context, resources.Service.Name, metav1.DeleteOptions{})
+	if err != nil && !errors.IsNotFound(err) {
+		return err
+	}
+	err = service.ConfigMaps().Delete(context, resources.ConfigMap.Name, metav1.DeleteOptions{})
+	if err != nil && !errors.IsNotFound(err) {
+		return err
+	}
+	err = service.Deployments().Delete(context, resources.Deployment.Name, metav1.DeleteOptions{})
+	if err != nil && !errors.IsNotFound(err) {
+		return err
+	}
+	return nil
 }
 
 func deploymentImageForSliverType(
@@ -269,6 +282,7 @@ func resourcesForRspec(
 		return nil, err
 	}
 	sliverIdentifier := authorityIdentifier.Copy(identifiers.ResourceTypeSliver, sliverName)
+
 	annotations := map[string]string{
 		constants.Fed4FireClientId: node.ClientID,
 		constants.Fed4FireExpires:  (time.Now().Add(24 * time.Hour)).Format(time.RFC3339),
@@ -276,6 +290,7 @@ func resourcesForRspec(
 		constants.Fed4FireSlice:    sliceIdentifier.URN(),
 		constants.Fed4FireSliver:   sliverIdentifier.URN(),
 	}
+
 	labels := map[string]string{
 		constants.Fed4FireSliceHash:  sliceHash,
 		constants.Fed4FireSliverName: sliverName,
