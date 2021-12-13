@@ -1,6 +1,7 @@
 # Fed4FIRE Aggregate Manager for EdgeNet
 
-[![Tests](https://img.shields.io/github/workflow/status/EdgeNet-project/fed4fire/Go?logo=github)](https://github.com/EdgeNet-project/fed4fire/actions/workflows/go.yml)
+[![CI/Build](https://img.shields.io/github/workflow/status/EdgeNet-project/fed4fire/Go?logo=github&label=build)](https://github.com/EdgeNet-project/fed4fire/actions/workflows/go.yml)
+[![CI/Docker](https://img.shields.io/github/workflow/status/EdgeNet-project/fed4fire/Docker?logo=github&label=docker)](https://github.com/EdgeNet-project/fed4fire/actions/workflows/docker.yml)
 [![Coverage](https://img.shields.io/coveralls/github/EdgeNet-project/fed4fire?logo=coveralls&logoColor=white)](https://coveralls.io/github/EdgeNet-project/fed4fire)
 
 This package implements the [GENI Aggregate Manager API Version 3](https://groups.geni.net/geni/wiki/GAPI_AM_API_V3) to federate [EdgeNet](https://www.edge-net.org) under the [Fed4FIRE+](https://www.fed4fire.eu) project.
