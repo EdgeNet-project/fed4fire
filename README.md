@@ -8,6 +8,20 @@ This package implements the [GENI Aggregate Manager API Version 3](https://group
 
 ## Accessing EdgeNet through Fed4FIRE
 
+Allocate two containers running the default image:
+```xml
+<rspec type="request" xsi:schemaLocation="http://www.geni.net/resources/rspec/3 http://www.geni.net/resources/rspec/3/request.xsd" xmlns:client="http://www.protogeni.net/resources/rspec/ext/client/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.geni.net/resources/rspec/3">
+  <node client_id="container_1" component_manager_id="urn:publicid:IDN+ilabt.imec.be+authority+cm" exclusive="false">
+    <sliver_type name="container"/>
+  </node>
+  <node client_id="container_2" component_manager_id="urn:publicid:IDN+ilabt.imec.be+authority+cm" exclusive="false">
+    <sliver_type name="container"/>
+  </node>
+</rspec>
+```
+
+Set the SSH key with the `geni_update_users` operational action.
+
 ## Architecture
 
 - The AM server is stateless, all the state is stored in the Kubernetes object through annotations.
