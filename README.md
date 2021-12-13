@@ -1,6 +1,7 @@
 # Fed4FIRE Aggregate Manager for EdgeNet
 
-[![Go](https://github.com/EdgeNet-project/fed4fire/actions/workflows/go.yml/badge.svg)](https://github.com/EdgeNet-project/fed4fire/actions/workflows/go.yml)
+[![Tests](https://img.shields.io/github/workflow/status/EdgeNet-project/fed4fire/Go?logo=github)](https://github.com/EdgeNet-project/fed4fire/actions/workflows/go.yml)
+[![Coverage](https://img.shields.io/coveralls/github/EdgeNet-project/fed4fire?logo=coveralls&logoColor=white)](https://coveralls.io/github/EdgeNet-project/fed4fire)
 
 ## Development
 
