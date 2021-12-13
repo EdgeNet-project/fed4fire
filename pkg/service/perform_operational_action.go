@@ -41,6 +41,7 @@ func (s *Service) PerformOperationalAction(
 	args *PerformOperationalActionArgs,
 	reply *PerformOperationalActionReply,
 ) error {
+	// TODO: Check credentials
 	if args.Action != "geni_update_users" {
 		// TODO: Handle error
 		return nil
