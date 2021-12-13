@@ -32,7 +32,7 @@ make
 docker-compose up
 # Optionnally, connect to the Go debug server
 dlv connect localhost:40000
-# Issue requests (set `--cert` to the appropriate client certificate path)
+# Issue XML-RPC calls (set `--cert` to the appropriate client certificate path)
 curl --cacert self_signed/ca-server.pem \
      --cert ~/.jFed/login-certs/*.pem \
      --data '<methodCall><methodName>GetVersion</methodName><params/></methodCall>' \
