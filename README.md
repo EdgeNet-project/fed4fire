@@ -8,33 +8,20 @@ This package implements the [GENI Aggregate Manager API Version 3](https://group
 
 ## Accessing EdgeNet through Fed4FIRE
 
-Allocate two containers running the default image:
-```xml
-<rspec type="request" xsi:schemaLocation="http://www.geni.net/resources/rspec/3 http://www.geni.net/resources/rspec/3/request.xsd" xmlns:client="http://www.protogeni.net/resources/rspec/ext/client/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.geni.net/resources/rspec/3">
-  <node client_id="container_1" exclusive="false">
-    <sliver_type name="container"/>
-  </node>
-  <node client_id="container_2" exclusive="false">
-    <sliver_type name="container"/>
-  </node>
-</rspec>
-```
-
-Set the SSH key with the `geni_update_users` operational action.
+- To run experiments on a Fed4FIRE testbed, follow the instructions at https://doc.fed4fire.eu
+- EdgeNet defines one non-exclusive sliver type named `container` and one disk image named `ubuntu2004`
+- The SSH key must be set through the `geni_update_users` operational action
 
 ## Architecture
 
-- The AM server is stateless, all the state is stored in the Kubernetes object through annotations.
-
-### Mapping Fed4Fire concepts to Kubernetes
-
-- Slice: namespace (here specifically EdgeNet subnamespaces)
-- Sliver: deployment
-
-Naming: first 8 bytes of a SHA512 hash in a hexadecimal string.
-This allows to create objects with names that are valid in the GENI spec, but not in Kubernetes which mostly allows only alphanumeric chars.
+- The AM server is stateless, all the information about slices and slivers is stored in Kubernetes objects annotations
+- Slices maps to Kubernetes namespaces
+- Slivers maps to Kubernetes deployments
+- Object names are derived from the first 8 bytes of the SHA512 hash of the RSpec name. This allows to create objects with names that are valid in the GENI spec, but not in Kubernetes which mostly allows only alphanumeric chars.
 
 ### Workarounds
+
+- Fed4FIRE uses client certificates with non-standard OIDs that are not supported by the Go X.509 parser. As such we rely on nginx to verify the client certificate and pass the decoded certificate to the AM server. The openssl CLI tool is then used to process the certificate, instead of the Go standard library.
 
 ## Deployment
 
