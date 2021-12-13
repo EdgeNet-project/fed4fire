@@ -10,6 +10,16 @@ This package implements the [GENI Aggregate Manager API Version 3](https://group
 
 ## Architecture
 
+- The AM server is stateless, all the state is stored in the Kubernetes object through annotations.
+
+### Mapping Fed4Fire concepts to Kubernetes
+
+- Slice: namespace (here specifically EdgeNet subnamespaces)
+- Sliver: deployment
+
+Naming: first 8 bytes of a SHA512 hash in a hexadecimal string.
+This allows to create objects with names that are valid in the GENI spec, but not in Kubernetes which mostly allows only alphanumeric chars.
+
 ### Workarounds
 
 ## Deployment
@@ -40,37 +50,3 @@ curl --cacert self_signed/ca-server.pem \
      --request POST \
      https://localhost:9443
 ```
-
-## TODO
-- Kube deployment
-- Document why we need nginx and how it works
-- Document why we need xmlsec1 and openssl bindings
-- `env CGO_CFLAGS="-I/opt/homebrew/opt/openssl@1.1/include" CGO_LDFLAGS="-L/opt/homebrew/opt/openssl@1.1/lib" go get github.com/libp2p/go-openssl`
-
-### Using jFed automated testing
-
-#### Add local AM using jFed scanner
-
-```bash
-curl -LO https://jfed.ilabt.imec.be/downloads/stable/jar/jfed_gui.tar.gz
-tar xvzf jfed_gui.tar.gz
-cd jfed_gui/
-# TODO: Download javafx (x86/arm64)
-java --module-path ~/Downloads/javafx-sdk-17.0.0.1/lib/ -cp "*:lib/*" \
-  --add-modules=javafx.swing,javafx.graphics,javafx.fxml,javafx.media,javafx.web \
-  be.iminds.ilabt.jfed.ui.javafx.scanner.ScannerLauncher
-```
-
-TODO...
-
-- The AM server is stateless, all the state is stored in the Kubernetes object through annotations.
-
-## Mapping Fed4Fire concepts to Kubernetes
-
-- Slice: namespace (here specifically EdgeNet subnamespaces)
-- Sliver: deployment
-
-Naming: first 8 bytes of a SHA512 hash in a hexadecimal string.
-This allows to create objects with names that are valid in the GENI spec, but not in Kubernetes which mostly allows only alphanumeric chars.
-
-
