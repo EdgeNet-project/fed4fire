@@ -25,13 +25,13 @@ This package implements the [GENI Aggregate Manager API Version 3](https://group
 
 ## Deployment
 
-The AM must be deployed behind a reverse proxy that pass the `X-Fed4Fire-Certificate` header.
-For an example, see [`dev/nginx.conf`](https://github.com/EdgeNet-project/fed4fire/blob/main/dev/nginx.conf).
-
-To see the AM options:
+The AM image is hosted on Docker Hub ([`edgenetio/fed4fire`](https://hub.docker.com/r/edgenetio/fed4fire)):
 ```bash
 docker run edgenetio/fed4fire:main --help
 ```
+
+The AM must be deployed behind a reverse proxy that pass the `X-Fed4Fire-Certificate` header.
+For an example, see [`dev/nginx.conf`](https://github.com/EdgeNet-project/fed4fire/blob/main/dev/nginx.conf).
 
 ## Development
 
