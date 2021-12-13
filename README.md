@@ -47,7 +47,7 @@ dlv connect localhost:40000
 curl --cacert self_signed/ca-server.pem \
      --cert ~/.jFed/login-certs/*.pem \
      --data '<methodCall><methodName>GetVersion</methodName><params/></methodCall>' \
-     --header "Content-Type: text/xml" \
+     --header 'Content-Type: text/xml' \
      --request POST \
      https://localhost:9443
 ```
