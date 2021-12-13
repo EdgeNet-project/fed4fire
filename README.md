@@ -14,15 +14,20 @@ This package implements the [GENI Aggregate Manager API Version 3](https://group
 ## Development
 
 ```bash
+git clone git@github.com:EdgeNet-project/fed4fire.git && cd fed4fire/dev/
+# Create a self-signed server certificate and download the trusted client root certificates
 make
-
-go run main.go \
-  -containerImage ubuntu2004:docker.io/library/ubuntu:20.04 \
-  -kubeconfig ~/.kube/config \
-  -parentNamespace lip6-lab-fed4fire-dev \
-  -serverCert self_signed/server.pem \
-  -serverKey self_signed/server.key \
-  -trustedRootCert self_signed/ca-client.pem
+# Start the AM behind nginx
+docker-compose up
+# Optionnally, connect to the Go debug server
+dlv connect localhost:40000
+# Issue requests (set `--cert` to the appropriate client certificate path)
+curl --cacert self_signed/ca-server.pem \
+     --cert ~/.jFed/login-certs/*.pem \
+     --data '<methodCall><methodName>GetVersion</methodName><params/></methodCall>' \
+     --header "Content-Type: text/xml" \
+     --request POST \
+     https://localhost:9443
 ```
 
 ## TODO
