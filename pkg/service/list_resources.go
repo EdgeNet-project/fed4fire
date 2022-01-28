@@ -114,8 +114,15 @@ func rspecForNode(
 ) rspec.Node {
 	nodeArch := node.Labels["kubernetes.io/arch"]
 	nodeCountry := node.Labels["edge-net.io/country-iso"]
-	nodeLatitude := node.Labels["edge-net.io/lat"][1:]
-	nodeLongitude := node.Labels["edge-net.io/lon"][1:]
+	nodeLatitude := node.Labels["edge-net.io/lat"]
+	nodeLongitude := node.Labels["edge-net.io/lon"]
+	// n39.92050 -> 39.92050
+	if len(nodeLatitude) > 1 {
+		nodeLatitude = nodeLatitude[1:]
+	}
+	if len(nodeLongitude) > 1 {
+		nodeLongitude = nodeLongitude[1:]
+	}
 	nodeName := node.Name
 	nodeIsReady := true
 	for _, condition := range node.Status.Conditions {
