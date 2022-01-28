@@ -1,8 +1,11 @@
 package service
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestFindMatchingCredential(t *testing.T) {
+	// Untrusted credentials
 	_, err := FindMatchingCredential(
 		testUserIdentifier,
 		testSliceIdentifier,
@@ -12,6 +15,8 @@ func TestFindMatchingCredential(t *testing.T) {
 	if err == nil {
 		t.Errorf("FindMatchingCredential() = nil; want error")
 	}
+
+	// Missing credentials
 	_, err = FindMatchingCredential(
 		testUserIdentifier,
 		testSliceIdentifier,
@@ -21,6 +26,8 @@ func TestFindMatchingCredential(t *testing.T) {
 	if err == nil {
 		t.Errorf("FindMatchingCredential() = nil; want error")
 	}
+
+	// Valid credentials
 	_, err = FindMatchingCredential(
 		testUserIdentifier,
 		testSliceIdentifier,

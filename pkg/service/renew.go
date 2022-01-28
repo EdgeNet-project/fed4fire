@@ -32,6 +32,7 @@ type RenewReply struct {
 // though different policies may apply to slivers in the different states,
 // resulting in much shorter max expiration times for geni_allocated slivers.
 func (s *Service) Renew(r *http.Request, args *RenewArgs, reply *RenewReply) error {
+	// TODO: Check credentials
 	// TODO: Calling Renew on an unknown, deleted or expired sliver (by explicit URN) shall result in an error
 	// (e.g. SEARCHFAILED, EXPIRED or ERROR geni_code)
 	// (unless geni_best_effort is true, in which case the method may succeed, but return a geni_error for each sliver that failed).

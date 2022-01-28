@@ -1,6 +1,8 @@
 package service
 
-import "net/http"
+import (
+	"net/http"
+)
 
 type StatusArgs struct {
 	URNs        []string
@@ -21,5 +23,14 @@ type StatusReply struct {
 // which began to asynchronously provision the resources. This should be relatively dynamic data,
 // not descriptive data as returned in the manifest RSpec.
 func (s *Service) Status(r *http.Request, args *StatusArgs, reply *StatusReply) error {
+	// TODO: Check credentials
+	//for _, urn := range args.URNs {
+	//	identifier, err := identifiers.Parse(urn)
+	//	if err != nil {
+	//		// TODO: Handle error
+	//		fmt.Println(err)
+	//	}
+	//	deployments, err := s.GetDeployments(r.Context(), )
+	//}
 	return nil
 }
