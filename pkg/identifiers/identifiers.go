@@ -70,3 +70,15 @@ func Parse(s string) (*Identifier, error) {
 	}
 	return identifier, nil
 }
+
+func ParseMultiple(strings []string) ([]Identifier, error) {
+	identifiers := make([]Identifier, len(strings))
+	for i, s := range strings {
+		identifier, err := Parse(s)
+		if err != nil {
+			return nil, err
+		}
+		identifiers[i] = *identifier
+	}
+	return identifiers, nil
+}

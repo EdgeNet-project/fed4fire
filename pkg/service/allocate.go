@@ -30,7 +30,7 @@ type AllocateArgs struct {
 	SliceURN    string
 	Credentials []Credential
 	Rspec       string
-	Options     AllocateOptions
+	Options     Options
 }
 
 type AllocateReply struct {
@@ -42,11 +42,6 @@ type AllocateReply struct {
 			Error   string   `xml:"geni_error"`
 		} `xml:"value"`
 	}
-}
-
-type AllocateOptions struct {
-	// Optional. Requested expiration of all new slivers, may be ignored by aggregates.
-	EndTime string `xml:"geni_end_time"`
 }
 
 func (v *AllocateReply) SetAndLogError(err error, msg string, keysAndValues ...interface{}) error {
@@ -97,21 +92,13 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 	if err != nil {
 		return reply.SetAndLogError(err, "Failed to parse slice URN")
 	}
-	credential, err := FindMatchingCredential(
+	_, err = FindMatchingCredential(
 		*userIdentifier,
 		*sliceIdentifier,
 		args.Credentials,
 		s.TrustedCertificates,
 	)
-	if err == nil {
-		klog.InfoS(
-			"Found matching credential",
-			"ownerUrn",
-			credential.OwnerURN,
-			"targetUrn",
-			credential.TargetURN,
-		)
-	} else {
+	if err != nil {
 		return reply.SetAndLogError(err, "Invalid credentials")
 	}
 
@@ -263,16 +250,15 @@ func resourcesForRspec(
 	cpuLimit string,
 	memoryLimit string,
 ) (*sliverResources, error) {
-	if node.Exclusive {
-		return nil, fmt.Errorf("exclusive must be false")
-	}
-	if len(node.SliverTypes) != 1 {
-		return nil, fmt.Errorf("exactly one sliver type must be specified")
-	}
-	image, err := deploymentImageForSliverType(node.SliverTypes[0], containerImages)
-	if err != nil {
-		return nil, err
-	}
+	// TODO: Set argument for default sliver type.
+	//if len(node.SliverTypes) != 1 {
+	//	return nil, fmt.Errorf("exactly one sliver type must be specified")
+	//}
+	//image, err := deploymentImageForSliverType(node.SliverTypes[0], containerImages)
+	//if err != nil {
+	//	return nil, err
+	//}
+	image := "docker.io/maxmouchet/openssh-server:latest"
 	sliceHash, err := naming.SliceHash(sliceIdentifier)
 	if err != nil {
 		return nil, err

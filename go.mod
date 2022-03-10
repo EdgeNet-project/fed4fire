@@ -8,7 +8,7 @@ require (
 	github.com/gorilla/rpc v1.2.0
 	github.com/imdario/mergo v0.3.12 // indirect
 	github.com/kr/pretty v0.3.0 // indirect
-	github.com/maxmouchet/gorilla-xmlrpc v0.0.0-20211005130100-890b428d4cb1
+	github.com/maxmouchet/gorilla-xmlrpc v0.0.0-20220310180104-787984fc5e84
 	github.com/oriser/regroup v0.0.0-20210730155327-fca8d7531263
 	github.com/rogpeppe/go-internal v1.8.0 // indirect
 	golang.org/x/oauth2 v0.0.0-20210819190943-2bc19b11175f // indirect

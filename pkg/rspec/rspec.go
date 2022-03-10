@@ -4,11 +4,16 @@ import "encoding/xml"
 
 const (
 	RspecTypeAdvertisement = "advertisement"
+	RspecTypeManifest      = "manifest"
 	RspecTypeRequest       = "request"
 )
 
+const (
+	RspecLoginAuthenticationSSH = "ssh-keys"
+)
+
 type Rspec struct {
-	XMLName xml.Name `xml:"rspec"`
+	XMLName xml.Name `xml:"http://www.geni.net/resources/rspec/3 rspec"`
 	Type    string   `xml:"type,attr"`
 	Nodes   []Node   `xml:"node"`
 }
@@ -22,6 +27,7 @@ type Node struct {
 	Exclusive          bool         `xml:"exclusive,attr"`
 	HardwareType       HardwareType `xml:"hardware_type"`
 	SliverTypes        []SliverType `xml:"sliver_type"`
+	Services           Services     `xml:"services"`
 	Available          Available    `xml:"available"`
 	Location           Location     `xml:"location"`
 }
@@ -40,6 +46,19 @@ type SliverType struct {
 	XMLName    xml.Name    `xml:"sliver_type"`
 	Name       string      `xml:"name,attr"`
 	DiskImages []DiskImage `xml:"disk_image"`
+}
+
+type Services struct {
+	XMLName xml.Name `xml:"services"`
+	Logins  []Login  `xml:"login"`
+}
+
+type Login struct {
+	XMLName        xml.Name `xml:"login"`
+	Authentication string   `xml:"authentication,attr"`
+	Hostname       string   `xml:"hostname,attr"`
+	Port           int      `xml:"port,attr"`
+	Username       string   `xml:"username,attr"`
 }
 
 type Available struct {

@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"github.com/EdgeNet-project/fed4fire/pkg/constants"
 	"net/http"
 	"strings"
 
@@ -21,8 +22,9 @@ type PerformOperationalActionArgs struct {
 
 type PerformOperationalActionReply struct {
 	Data struct {
-		Code  Code     `xml:"code"`
-		Value []Sliver `xml:"value"`
+		Code   Code     `xml:"code"`
+		Output string   `xml:"output"`
+		Value  []Sliver `xml:"value"`
 	}
 }
 
@@ -33,6 +35,15 @@ type UpdateUsersOptions struct {
 	} `xml:"geni_users"`
 }
 
+func (v *PerformOperationalActionReply) SetAndLogError(err error, msg string, keysAndValues ...interface{}) error {
+	klog.ErrorS(err, msg, keysAndValues...)
+	v.Data.Code.Code = constants.GeniCodeError
+	v.Data.Output = fmt.Sprintf("%s: %s", msg, err)
+	return nil
+}
+
+// TODO: Refactor with `Provision`.
+
 // PerformOperationalAction performs the named operational action on the named slivers,
 // possibly changing the geni_operational_status of the named slivers, e.g. 'start' a VM.
 // For valid operations and expected states, consult the state diagram advertised in the aggregate's advertisement RSpec.
@@ -41,7 +52,35 @@ func (s *Service) PerformOperationalAction(
 	args *PerformOperationalActionArgs,
 	reply *PerformOperationalActionReply,
 ) error {
-	// TODO: Check credentials
+	// TODO: Allow a slice credential for a sliver URN.
+	//userIdentifier, err := identifiers.Parse(r.Header.Get(constants.HttpHeaderUser))
+	//if err != nil {
+	//	return reply.SetAndLogError(err, "Failed to parse user URN")
+	//}
+	resourceIdentifiers, err := identifiers.ParseMultiple(args.URNs)
+	if err != nil {
+		return reply.SetAndLogError(err, "Failed to parse identifiers")
+	}
+	//_, err = FindMatchingCredentials(*userIdentifier, resourceIdentifiers, args.Credentials, s.TrustedCertificates)
+	//if err != nil {
+	//	return reply.SetAndLogError(err, "Invalid credentials")
+	//}
+	if args.Action == "geni_start" {
+		deployments, err := s.GetDeploymentsMultiple(r.Context(), resourceIdentifiers)
+		if err != nil {
+			return reply.SetAndLogError(err, "Failed to list deployments")
+		}
+		for _, deployment := range deployments {
+			sliver := Sliver{
+				URN:              deployment.Annotations[constants.Fed4FireSliver],
+				Expires:          deployment.Annotations[constants.Fed4FireExpires],
+				AllocationStatus: constants.GeniStateProvisioned, // TODO: Return the proper state.
+			}
+			reply.Data.Value = append(reply.Data.Value, sliver)
+		}
+		reply.Data.Code.Code = constants.GeniCodeSuccess
+		return nil
+	}
 	if args.Action != "geni_update_users" {
 		// TODO: Handle error
 		return nil

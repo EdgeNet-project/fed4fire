@@ -5,7 +5,7 @@ import "net/http"
 type ShutdownArgs struct {
 	SliceURN    string
 	Credentials []Credential
-	Options     string // Options
+	Options     Options
 }
 
 type ShutdownReply struct {

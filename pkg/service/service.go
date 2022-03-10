@@ -116,6 +116,18 @@ func (s Service) GetDeployments(
 	}
 }
 
+func (s Service) GetDeploymentsMultiple(ctx context.Context, identifiers []identifiers.Identifier) ([]appsv1.Deployment, error) {
+	all := make([]appsv1.Deployment, 0)
+	for _, identifier := range identifiers {
+		resources, err := s.GetDeployments(ctx, identifier)
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, resources...)
+	}
+	return all, nil
+}
+
 func (s Service) GetPods(
 	ctx context.Context,
 	identifier identifiers.Identifier,
@@ -166,11 +178,20 @@ type Credential struct {
 	Value   string `xml:"geni_value"`
 }
 
+type RspecVersion struct {
+	Type       string   `xml:"type"`
+	Version    string   `xml:"version"`
+	Schema     string   `xml:"schema"`
+	Namespace  string   `xml:"namespace"`
+	Extensions []string `xml:"extensions"`
+}
+
 type Sliver struct {
-	URN              string `xml:"geni_sliver_urn"`
-	Expires          string `xml:"geni_expires"`
-	AllocationStatus string `xml:"geni_allocation_status"`
-	Error            string `xml:"geni_error"`
+	URN               string `xml:"geni_sliver_urn"`
+	Expires           string `xml:"geni_expires"`
+	AllocationStatus  string `xml:"geni_allocation_status"`
+	OperationalStatus string `xml:"geni_operational_status"`
+	Error             string `xml:"geni_error"`
 }
 
 type Options struct {
@@ -179,7 +200,8 @@ type Options struct {
 	// If this value is true (1), the result should contain only available resources.
 	// If this value is false (0) or unspecified, both available and allocated resources should be returned.
 	// The Aggregate Manager is free to limit visibility of certain resources based on the credentials parameter.
-	Available bool `xml:"geni_available"`
+	Available  bool `xml:"geni_available"`
+	BestEffort bool `xml:"geni_best_effort"`
 	// XML-RPC boolean value indicating whether the caller would like the result to be compressed.
 	// If the value is true (1), the returned resource list will be compressed according to RFC 1950.
 	// If the value is false (0) or unspecified, the return will be text.
@@ -192,10 +214,7 @@ type Options struct {
 	// This option is required, and aggregates are expected to return a geni_code of 1 (BADARGS) if it is missing.
 	// Aggregates should return a geni_code of 4 (BADVERSION) if the requested RSpec version
 	// is not one advertised as supported in GetVersion.
-	RspecVersion struct {
-		Type    string `xml:"type"`
-		Version string `xml:"version"`
-	} `xml:"geni_rspec_version"`
+	RspecVersion RspecVersion `xml:"geni_rspec_version"`
 }
 
 func (c Credential) ValidatedSFA(trustedCertificates [][]byte) (*sfa.Credential, error) {
@@ -240,6 +259,9 @@ func FindMatchingCredential(
 	trustedCertificates [][]byte,
 ) (*sfa.Credential, error) {
 	for _, credential := range credentials {
+		if credential.Type != constants.GeniCredentialTypeSfa {
+			continue
+		}
 		validated, err := credential.ValidatedSFA(trustedCertificates)
 		if err != nil {
 			return nil, err
@@ -257,4 +279,50 @@ func FindMatchingCredential(
 		}
 	}
 	return nil, fmt.Errorf("no matching credential found")
+}
+
+func FindMatchingCredentials(
+	userIdentifier identifiers.Identifier,
+	targetIdentifiers []identifiers.Identifier,
+	credentials []Credential,
+	trustedCertificates [][]byte,
+) ([]*sfa.Credential, error) {
+	allCredentials := make([]*sfa.Credential, len(targetIdentifiers))
+	for i, targetIdentifier := range targetIdentifiers {
+		credential, err := FindMatchingCredential(
+			userIdentifier,
+			targetIdentifier,
+			credentials,
+			trustedCertificates,
+		)
+		if err != nil {
+			return nil, err
+		}
+		allCredentials[i] = credential
+	}
+	return allCredentials, nil
+}
+
+func FindValidCredential(
+	userIdentifier identifiers.Identifier,
+	credentials []Credential,
+	trustedCertificates [][]byte,
+) (*sfa.Credential, error) {
+	for _, credential := range credentials {
+		if credential.Type != constants.GeniCredentialTypeSfa {
+			continue
+		}
+		validated, err := credential.ValidatedSFA(trustedCertificates)
+		if err != nil {
+			return nil, err
+		}
+		ownerId, err := identifiers.Parse(validated.OwnerURN)
+		if err != nil {
+			return nil, err
+		}
+		if ownerId.Equal(userIdentifier) {
+			return validated, nil
+		}
+	}
+	return nil, fmt.Errorf("no valid credential found")
 }

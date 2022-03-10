@@ -16,35 +16,16 @@ import (
 	"k8s.io/klog/v2"
 )
 
-type ListResourcesOptions struct {
-	// XML-RPC boolean value indicating whether the caller is interested in
-	// all resources or available resources.
-	// If this value is true (1), the result should contain only available resources.
-	// If this value is false (0) or unspecified, both available and allocated resources should be returned.
-	// The Aggregate Manager is free to limit visibility of certain resources based on the credentials parameter.
-	Available bool `xml:"geni_available"`
-	// XML-RPC boolean value indicating whether the caller would like the result to be compressed.
-	// If the value is true (1), the returned resource list will be compressed according to RFC 1950.
-	// If the value is false (0) or unspecified, the return will be text.
-	Compressed bool `xml:"geni_compressed"`
-	// XML-RPC struct indicating the type and version of Advertisement RSpec to return.
-	// The struct contains 2 members, type and version. type and version are case-insensitive strings,
-	// matching those in geni_ad_rspec_versions as returned by GetVersion at this aggregate.
-	// This option is required, and aggregates are expected to return a geni_code of 1 (BADARGS) if it is missing.
-	// Aggregates should return a geni_code of 4 (BADVERSION) if the requested RSpec version
-	// is not one advertised as supported in GetVersion.
-	RspecVersion RspecVersion `xml:"geni_rspec_version"`
-}
-
 type ListResourcesArgs struct {
 	Credentials []Credential
-	Options     ListResourcesOptions
+	Options     Options
 }
 
 type ListResourcesReply struct {
 	Data struct {
-		Code  Code   `xml:"code"`
-		Value string `xml:"value"`
+		Code   Code   `xml:"code"`
+		Output string `xml:"output"`
+		Value  string `xml:"value"`
 	}
 }
 
@@ -55,7 +36,7 @@ func (v *ListResourcesReply) SetAndLogError(
 ) error {
 	klog.ErrorS(err, msg, keysAndValues...)
 	v.Data.Code.Code = constants.GeniCodeError
-	v.Data.Value = fmt.Sprintf("%s: %s", msg, err)
+	v.Data.Output = fmt.Sprintf("%s: %s", msg, err)
 	return nil
 }
 
@@ -68,6 +49,7 @@ func (s *Service) ListResources(
 	args *ListResourcesArgs,
 	reply *ListResourcesReply,
 ) error {
+	// TODO: Other endpoints where to perform these checks?
 	if args.Options.RspecVersion.Type == "" {
 		reply.Data.Code.Code = constants.GeniCodeBadargs
 		return nil
@@ -75,6 +57,16 @@ func (s *Service) ListResources(
 	if strings.ToLower(args.Options.RspecVersion.Type) != "geni" ||
 		args.Options.RspecVersion.Version != "3" {
 		reply.Data.Code.Code = constants.GeniCodeBadversion
+		return nil
+	}
+
+	userIdentifier, err := identifiers.Parse(r.Header.Get(constants.HttpHeaderUser))
+	if err != nil {
+		return reply.SetAndLogError(err, "Failed to parse user URN")
+	}
+	_, err = FindValidCredential(*userIdentifier, args.Credentials, s.TrustedCertificates)
+	if err != nil {
+		reply.Data.Code.Code = constants.GeniCodeBadargs
 		return nil
 	}
 

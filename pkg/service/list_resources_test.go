@@ -17,7 +17,7 @@ import (
 
 func TestListResources_BadRspecVersion(t *testing.T) {
 	s := testService()
-	args := &ListResourcesArgs{Options: ListResourcesOptions{RspecVersion: RspecVersion{
+	args := &ListResourcesArgs{Options: Options{RspecVersion: RspecVersion{
 		Type:    "geni",
 		Version: "2",
 	}}}
@@ -50,7 +50,7 @@ func TestListResources_NoNodes(t *testing.T) {
 	s := testService()
 	r := testRequest()
 	args := &ListResourcesArgs{
-		Options: ListResourcesOptions{
+		Options: Options{
 			RspecVersion: RspecVersion{
 				Type:    "geni",
 				Version: "3",
@@ -85,7 +85,7 @@ func TestListResources_Nodes(t *testing.T) {
 		s.KubernetesClient.CoreV1().Nodes().Create(context.TODO(), node, metav1.CreateOptions{})
 	}
 	args := &ListResourcesArgs{
-		Options: ListResourcesOptions{
+		Options: Options{
 			RspecVersion: RspecVersion{
 				Type:    "geni",
 				Version: "3",
@@ -120,7 +120,7 @@ func TestListResources_NodesAvailableCompressed(t *testing.T) {
 		s.KubernetesClient.CoreV1().Nodes().Create(context.TODO(), node, metav1.CreateOptions{})
 	}
 	args := &ListResourcesArgs{
-		Options: ListResourcesOptions{
+		Options: Options{
 			Available:  true,
 			Compressed: true,
 			RspecVersion: RspecVersion{

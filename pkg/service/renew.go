@@ -15,7 +15,7 @@ type RenewArgs struct {
 	URNs           []string
 	Credentials    []Credential
 	ExpirationTime string
-	Options        string
+	Options        Options
 }
 
 type RenewReply struct {

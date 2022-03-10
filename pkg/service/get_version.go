@@ -15,14 +15,6 @@ type CredentialType struct {
 	Version string `xml:"geni_version"`
 }
 
-type RspecVersion struct {
-	Type       string   `xml:"type"`
-	Version    string   `xml:"version"`
-	Schema     string   `xml:"schema"`
-	Namespace  string   `xml:"namespace"`
-	Extensions []string `xml:"extensions"`
-}
-
 type GetVersionArgs struct{}
 
 type GetVersionReply struct {
