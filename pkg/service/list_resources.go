@@ -3,10 +3,8 @@ package service
 import (
 	"encoding/xml"
 	"fmt"
-	"net/http"
-	"strings"
-
 	"github.com/EdgeNet-project/fed4fire/pkg/constants"
+	"net/http"
 
 	"github.com/EdgeNet-project/fed4fire/pkg/identifiers"
 	"github.com/EdgeNet-project/fed4fire/pkg/rspec"
@@ -49,17 +47,6 @@ func (s *Service) ListResources(
 	args *ListResourcesArgs,
 	reply *ListResourcesReply,
 ) error {
-	// TODO: Other endpoints where to perform these checks?
-	if args.Options.RspecVersion.Type == "" {
-		reply.Data.Code.Code = constants.GeniCodeBadargs
-		return nil
-	}
-	if strings.ToLower(args.Options.RspecVersion.Type) != "geni" ||
-		args.Options.RspecVersion.Version != "3" {
-		reply.Data.Code.Code = constants.GeniCodeBadversion
-		return nil
-	}
-
 	userIdentifier, err := identifiers.Parse(r.Header.Get(constants.HttpHeaderUser))
 	if err != nil {
 		return reply.SetAndLogError(err, "Failed to parse user URN")

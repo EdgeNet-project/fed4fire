@@ -15,8 +15,7 @@ type StatusArgs struct {
 
 type StatusReply struct {
 	Data struct {
-		Code Code `xml:"code"`
-		// TODO: Check in other parts of the code where we need `Output` instead of `Error`.
+		Code   Code   `xml:"code"`
 		Output string `xml:"output"`
 		Value  struct {
 			URN     string   `xml:"geni_urn"`
