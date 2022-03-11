@@ -10,7 +10,6 @@ This package implements the [GENI Aggregate Manager API Version 3](https://group
 
 - To run experiments on a Fed4FIRE testbed, follow the instructions at https://doc.fed4fire.eu
 - EdgeNet defines one non-exclusive sliver type named `container` and one disk image named `ubuntu2004`
-- The SSH key must be set through the `geni_update_users` operational action
 
 ## Architecture
 
