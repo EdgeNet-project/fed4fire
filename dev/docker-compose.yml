@@ -17,7 +17,7 @@ services:
       - --
       - -authorityName=edge-net.org
       - -containerImage=ubuntu2004:docker.io/maxmouchet/openssh-server:latest
-      - -kubeconfig=/kubeconfig.cfg
+      - -kubeconfig=/root/.kube/config
       - -namespace=fed4fire-dev
       - -serverAddr=0.0.0.0:9443
       - -trustedCert=/trusted_roots/ilabt.imec.be.pem
@@ -26,7 +26,7 @@ services:
       - "40000:40000"
     volumes:
       - ./trusted_roots:/trusted_roots:ro
-      - ~/.kube/edgenet-kubeconfig.cfg:/kubeconfig.cfg:ro
+      - ~/.kube:/root/.kube:ro
   nginx:
     image: nginx:stable
     ports:
