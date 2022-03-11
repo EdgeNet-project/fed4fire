@@ -9,7 +9,7 @@ import (
 )
 
 func GetUserUrn(pemEncodedCert []byte) (string, error) {
-	block, _ := pem.Decode([]byte(pemEncodedCert))
+	block, _ := pem.Decode(pemEncodedCert)
 	cert, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
 		return "", err

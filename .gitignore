@@ -27,3 +27,4 @@ vendor/
 self_signed/
 trusted_roots/
 fed4fire
+!fed4fire/

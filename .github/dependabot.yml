@@ -12,3 +12,6 @@ updates:
     directory: "/"
     schedule:
       interval: "monthly"
+    ignore:
+      # k8s.io dependencies must be kept in sync with the cluster version
+      - dependency-name: "k8s.io/*"

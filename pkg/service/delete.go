@@ -8,8 +8,6 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/EdgeNet-project/fed4fire/pkg/identifiers"
-
 	"k8s.io/klog/v2"
 )
 
@@ -40,35 +38,30 @@ func (v *DeleteReply) SetAndLogError(err error, msg string, keysAndValues ...int
 // No further AM API operations may be performed on slivers that have been deleted.
 // https://groups.geni.net/geni/wiki/GAPI_AM_API_V3#Delete
 func (s *Service) Delete(r *http.Request, args *DeleteArgs, reply *DeleteReply) error {
-	userIdentifier, err := identifiers.Parse(r.Header.Get(constants.HttpHeaderUser))
+	slivers, err := s.AuthorizeAndListSlivers(
+		r.Context(),
+		r.Header.Get(constants.HttpHeaderUser),
+		args.URNs,
+		args.Credentials,
+	)
 	if err != nil {
-		return reply.SetAndLogError(err, "Failed to parse user URN")
+		return reply.SetAndLogError(err, constants.ErrorListResources)
 	}
-	resourceIdentifiers, err := identifiers.ParseMultiple(args.URNs)
-	if err != nil {
-		return reply.SetAndLogError(err, "Failed to parse identifiers")
-	}
-	_, err = FindMatchingCredentials(*userIdentifier, resourceIdentifiers, args.Credentials, s.TrustedCertificates)
-	if err != nil {
-		return reply.SetAndLogError(err, "Invalid credentials")
-	}
-	deployments, err := s.GetDeploymentsMultiple(r.Context(), resourceIdentifiers)
-	if err != nil {
-		return reply.SetAndLogError(err, "Failed to list deployments")
-	}
-	for _, deployment := range deployments {
-		sliver := Sliver{
-			URN:              deployment.Annotations[constants.Fed4FireSliver],
-			Expires:          deployment.Annotations[constants.Fed4FireExpires],
-			AllocationStatus: constants.GeniStateUnallocated,
-		}
-		err := s.Deployments().Delete(r.Context(), deployment.Name, metav1.DeleteOptions{})
+
+	for _, sliver := range slivers {
+		err := s.Deployments().Delete(r.Context(), sliver.Name, metav1.DeleteOptions{})
 		if err != nil {
-			return reply.SetAndLogError(err, "Failed to delete deployment", "name", deployment.Name)
+			return reply.SetAndLogError(err, constants.ErrorDeleteResource)
 		}
-		klog.InfoS("Deleted deployment", "name", deployment.Name)
-		reply.Data.Value = append(reply.Data.Value, sliver)
+		sliver.Status.AllocationStatus = constants.GeniStateUnallocated
+		sliver.Status.OperationalStatus = constants.GeniStateNotReady
+		_, err = s.Slivers().UpdateStatus(r.Context(), &sliver, metav1.UpdateOptions{})
+		if err != nil {
+			return reply.SetAndLogError(err, constants.ErrorUpdateResource)
+		}
+		reply.Data.Value = append(reply.Data.Value, NewSliver(sliver))
 	}
+
 	reply.Data.Code.Code = constants.GeniCodeSuccess
 	return nil
 }

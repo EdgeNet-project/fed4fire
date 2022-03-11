@@ -5,13 +5,13 @@ import (
 	"context"
 	"encoding/xml"
 	"fmt"
+	v1 "github.com/EdgeNet-project/fed4fire/pkg/apis/fed4fire/v1"
+	"github.com/EdgeNet-project/fed4fire/pkg/generated/clientset/versioned"
+	fed4firev1 "github.com/EdgeNet-project/fed4fire/pkg/generated/clientset/versioned/typed/fed4fire/v1"
 	"html"
 	"time"
 
 	"github.com/EdgeNet-project/fed4fire/pkg/constants"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-
 	"github.com/EdgeNet-project/fed4fire/pkg/naming"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -37,6 +37,7 @@ type Service struct {
 	NamespaceMemoryLimit string
 	Namespace            string
 	TrustedCertificates  [][]byte
+	Fed4FireClient       versioned.Interface
 	KubernetesClient     kubernetes.Interface
 }
 
@@ -60,108 +61,80 @@ func (s Service) Services() typedcorev1.ServiceInterface {
 	return s.KubernetesClient.CoreV1().Services(s.Namespace)
 }
 
-func (s Service) GetConfigMaps(
+func (s Service) Slivers() fed4firev1.SliverInterface {
+	return s.Fed4FireClient.Fed4fireV1().Slivers(s.Namespace)
+}
+
+func (s Service) ListSlivers(
 	ctx context.Context,
 	identifier identifiers.Identifier,
-) ([]corev1.ConfigMap, error) {
+) ([]v1.Sliver, error) {
 	switch identifier.ResourceType {
 	case identifiers.ResourceTypeSlice:
-		labelSelector, err := s.LabelSelector(identifier)
-		if err != nil {
-			return nil, err
-		}
-		configMaps, err := s.ConfigMaps().List(ctx, metav1.ListOptions{
+		sliceHash := naming.SliceHash(identifier.URN())
+		labelSelector := fmt.Sprintf("%s=%s", constants.Fed4FireSliceHash, sliceHash)
+		slivers, err := s.Slivers().List(ctx, metav1.ListOptions{
 			LabelSelector: labelSelector,
 		})
 		if err != nil {
 			return nil, err
 		}
-		return configMaps.Items, nil
+		return slivers.Items, nil
 	case identifiers.ResourceTypeSliver:
-		configMap, err := s.ConfigMaps().Get(ctx, identifier.ResourceName, metav1.GetOptions{})
+		sliver, err := s.Slivers().Get(ctx, identifier.ResourceName, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
-		return []corev1.ConfigMap{*configMap}, nil
+		return []v1.Sliver{*sliver}, nil
 	default:
 		return nil, fmt.Errorf("identifier type must be slice or sliver")
 	}
 }
 
-func (s Service) GetDeployments(
+func (s Service) AuthorizeAndListSlivers(
 	ctx context.Context,
-	identifier identifiers.Identifier,
-) ([]appsv1.Deployment, error) {
-	switch identifier.ResourceType {
-	case identifiers.ResourceTypeSlice:
-		labelSelector, err := s.LabelSelector(identifier)
-		if err != nil {
-			return nil, err
-		}
-		deployments, err := s.Deployments().List(ctx, metav1.ListOptions{
-			LabelSelector: labelSelector,
-		})
-		if err != nil {
-			return nil, err
-		}
-		return deployments.Items, nil
-	case identifiers.ResourceTypeSliver:
-		deployment, err := s.Deployments().Get(ctx, identifier.ResourceName, metav1.GetOptions{})
-		if err != nil {
-			return nil, err
-		}
-		return []appsv1.Deployment{*deployment}, nil
-	default:
-		return nil, fmt.Errorf("identifier type must be slice or sliver")
-	}
-}
-
-func (s Service) GetDeploymentsMultiple(ctx context.Context, identifiers []identifiers.Identifier) ([]appsv1.Deployment, error) {
-	all := make([]appsv1.Deployment, 0)
-	for _, identifier := range identifiers {
-		resources, err := s.GetDeployments(ctx, identifier)
-		if err != nil {
-			return nil, err
-		}
-		all = append(all, resources...)
-	}
-	return all, nil
-}
-
-func (s Service) GetPods(
-	ctx context.Context,
-	identifier identifiers.Identifier,
-) ([]corev1.Pod, error) {
-	switch identifier.ResourceType {
-	case identifiers.ResourceTypeSlice:
-		labelSelector, err := s.LabelSelector(identifier)
-		if err != nil {
-			return nil, err
-		}
-		pods, err := s.Pods().List(ctx, metav1.ListOptions{
-			LabelSelector: labelSelector,
-		})
-		if err != nil {
-			return nil, err
-		}
-		return pods.Items, nil
-	case identifiers.ResourceTypeSliver:
-		pod, err := s.Pods().Get(ctx, identifier.ResourceName, metav1.GetOptions{})
-		if err != nil {
-			return nil, err
-		}
-		return []corev1.Pod{*pod}, nil
-	default:
-		return nil, fmt.Errorf("identifier type must be slice or sliver")
-	}
-}
-
-func (s Service) LabelSelector(sliceIdentifier identifiers.Identifier) (string, error) {
-	sliceHash, err := naming.SliceHash(sliceIdentifier)
+	userIdentifierStr string,
+	resourceIdentifiersStr []string,
+	credentials []Credential,
+) ([]v1.Sliver, error) {
+	// TODO: Also valid slice credentials if no slivers?
+	userIdentifier, err := identifiers.Parse(userIdentifierStr)
 	if err != nil {
-		return "", nil
+		return nil, err
 	}
-	return fmt.Sprintf("%s=%s", constants.Fed4FireSliceHash, sliceHash), nil
+	slivers := make([]v1.Sliver, 0)
+	for _, urn := range resourceIdentifiersStr {
+		identifier, err := identifiers.Parse(urn)
+		if err != nil {
+			return nil, err
+		}
+		// Verify that a user is authorized for a slice before listing the slivers inside.
+		// This is mostly to be compatible with the spec. that expects an error on an
+		// un-existing slice (instead of a list of 0 slivers).
+		if identifier.ResourceType == identifiers.ResourceTypeSlice {
+			_, err := FindMatchingCredential(*userIdentifier, *identifier, credentials, s.TrustedCertificates)
+			if err != nil {
+				return nil, err
+			}
+		}
+		slivers_, err := s.ListSlivers(ctx, *identifier)
+		if err != nil {
+			return nil, err
+		}
+		slivers = append(slivers, slivers_...)
+	}
+	for _, sliver := range slivers {
+		_, err := FindCredentialForSliver(
+			*userIdentifier,
+			sliver,
+			credentials,
+			s.TrustedCertificates,
+		)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return slivers, nil
 }
 
 type Code struct {
@@ -215,6 +188,19 @@ type Options struct {
 	// Aggregates should return a geni_code of 4 (BADVERSION) if the requested RSpec version
 	// is not one advertised as supported in GetVersion.
 	RspecVersion RspecVersion `xml:"geni_rspec_version"`
+	Users        []struct {
+		URN  string   `xml:"urn"`
+		Keys []string `xml:"keys"`
+	} `xml:"geni_users"`
+}
+
+func NewSliver(sliver v1.Sliver) Sliver {
+	return Sliver{
+		URN:               sliver.Spec.URN,
+		Expires:           sliver.Spec.Expires.Format(time.RFC3339),
+		AllocationStatus:  sliver.Status.AllocationStatus,
+		OperationalStatus: sliver.Status.OperationalStatus,
+	}
 }
 
 func (c Credential) ValidatedSFA(trustedCertificates [][]byte) (*sfa.Credential, error) {
@@ -279,28 +265,6 @@ func FindMatchingCredential(
 		}
 	}
 	return nil, fmt.Errorf("no matching credential found")
-}
-
-func FindMatchingCredentials(
-	userIdentifier identifiers.Identifier,
-	targetIdentifiers []identifiers.Identifier,
-	credentials []Credential,
-	trustedCertificates [][]byte,
-) ([]*sfa.Credential, error) {
-	allCredentials := make([]*sfa.Credential, len(targetIdentifiers))
-	for i, targetIdentifier := range targetIdentifiers {
-		credential, err := FindMatchingCredential(
-			userIdentifier,
-			targetIdentifier,
-			credentials,
-			trustedCertificates,
-		)
-		if err != nil {
-			return nil, err
-		}
-		allCredentials[i] = credential
-	}
-	return allCredentials, nil
 }
 
 func FindValidCredential(

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"github.com/EdgeNet-project/fed4fire/pkg/constants"
 	"github.com/EdgeNet-project/fed4fire/pkg/gc"
+	versioned "github.com/EdgeNet-project/fed4fire/pkg/generated/clientset/versioned"
 	"github.com/EdgeNet-project/fed4fire/pkg/identifiers"
 	"github.com/EdgeNet-project/fed4fire/pkg/service"
 	"github.com/EdgeNet-project/fed4fire/pkg/utils"
@@ -44,12 +45,8 @@ func beforeFunc(i *rpc.RequestInfo) {
 	}
 	klog.InfoS(
 		"Received XML-RPC request",
-		"proto", i.Request.Proto,
-		"method", i.Request.Method,
-		"uri", i.Request.RequestURI,
-		"rpc-method", i.Method,
-		"user-agent", i.Request.UserAgent(),
 		"user-urn", i.Request.Header.Get(constants.HttpHeaderUser),
+		"rpc-method", i.Method,
 	)
 }
 
@@ -72,6 +69,9 @@ func main() {
 	}
 
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfigFile)
+	utils.Check(err)
+
+	f4fclient, err := versioned.NewForConfig(config)
 	utils.Check(err)
 
 	kubeclient, err := kubernetes.NewForConfig(config)
@@ -107,6 +107,7 @@ func main() {
 		ContainerMemoryLimit: containerMemoryLimit,
 		Namespace:            namespace,
 		TrustedCertificates:  trustedCerts_,
+		Fed4FireClient:       f4fclient,
 		KubernetesClient:     kubeclient,
 	}
 

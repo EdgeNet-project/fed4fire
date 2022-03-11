@@ -11,6 +11,19 @@ const (
 	HttpHeaderUser        = "X-Fed4Fire-User"
 )
 
+// Error messages specific to this AM.
+// TODO: Replace all error messages with these constants.
+const (
+	ErrorBadCredentials = "Invalid credentials"
+	ErrorBadTime        = "Failed to parse time"
+	ErrorBadIdentifier  = "Failed to parse identifier"
+	ErrorBuildResources = "Failed to build resources"
+	ErrorDeleteResource = "Failed to delete resource"
+	ErrorGetResource    = "Failed to get resource"
+	ErrorListResources  = "Failed to list resources"
+	ErrorUpdateResource = "Failed to update resource"
+)
+
 // Names for Kubernetes objects labels and annotations.
 const (
 	Fed4FireClientId   = "fed4fire.eu/client-id"
@@ -76,6 +89,34 @@ const (
 	// At this point, operational states are valid to specify further when
 	// the resources are available for experimenter use.
 	GeniStateProvisioned = "geni_provisioned"
+)
+
+// geni_operational_state
+const (
+	// Required for aggregates to support. A wait state.
+	// The sliver is still being allocated and provisioned, and other operational states are not yet valid.
+	GeniStatePendingAllocation = "geni_pending_allocation"
+	// A final state. The resource is not usable / accessible by the experimenter,
+	// and requires explicit experimenter action before it is usable/accessible by the experimenter.
+	GeniStateNotReady = "geni_notready"
+	// A wait state. The resource is in process of changing to geni_ready,
+	// and on success will do so without additional experimenter action.
+	// For example, the resource may be powering on.
+	GeniStateConfiguring = "geni_configuring"
+	// A wait state. The resource is in process of changing to geni_notready,
+	// and on success will do so without additional experimenter action.
+	// For example, the resource may be powering off.
+	GeniStateStopping = "geni_stopping"
+	// A final state. The resource is usable/accessible by the experimenter, and ready for slice operations.
+	GeniStateReady = "geni_ready"
+	// A wait state. The resource is performing some operational action,
+	// but remains accessible/usable by the experimenter.
+	// Upon completion of the action, the resource will return to geni_ready.
+	GeniStateReadyBusy = "geni_ready_busy"
+	// A final state. Some operational action failed, rendering the resource unusable.
+	// An administrator action, undefined by this API,
+	// may be required to return the resource to another operational state.
+	GeniStateFailed = "geni_failed"
 )
 
 const (

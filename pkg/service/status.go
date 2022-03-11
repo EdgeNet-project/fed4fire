@@ -3,7 +3,6 @@ package service
 import (
 	"fmt"
 	"github.com/EdgeNet-project/fed4fire/pkg/constants"
-	"github.com/EdgeNet-project/fed4fire/pkg/identifiers"
 	"k8s.io/klog/v2"
 	"net/http"
 )
@@ -39,32 +38,23 @@ func (v *StatusReply) SetAndLogError(err error, msg string, keysAndValues ...int
 // which began to asynchronously provision the resources. This should be relatively dynamic data,
 // not descriptive data as returned in the manifest RSpec.
 func (s *Service) Status(r *http.Request, args *StatusArgs, reply *StatusReply) error {
-	userIdentifier, err := identifiers.Parse(r.Header.Get(constants.HttpHeaderUser))
+	slivers, err := s.AuthorizeAndListSlivers(
+		r.Context(),
+		r.Header.Get(constants.HttpHeaderUser),
+		args.URNs,
+		args.Credentials,
+	)
 	if err != nil {
-		return reply.SetAndLogError(err, "Failed to parse user URN")
+		return reply.SetAndLogError(err, constants.ErrorListResources)
 	}
-	resourceIdentifiers, err := identifiers.ParseMultiple(args.URNs)
-	if err != nil {
-		return reply.SetAndLogError(err, "Failed to parse identifiers")
+
+	for _, sliver := range slivers {
+		// The spec. says that all the requested slivers belong to the same slice,
+		// so it's safe to retrieve the slice URN from any sliver.
+		reply.Data.Value.URN = sliver.Spec.SliceURN
+		reply.Data.Value.Slivers = append(reply.Data.Value.Slivers, NewSliver(sliver))
 	}
-	_, err = FindMatchingCredentials(*userIdentifier, resourceIdentifiers, args.Credentials, s.TrustedCertificates)
-	if err != nil {
-		return reply.SetAndLogError(err, "Invalid credentials")
-	}
-	deployments, err := s.GetDeploymentsMultiple(r.Context(), resourceIdentifiers)
-	if err != nil {
-		return reply.SetAndLogError(err, "Failed to list deployments")
-	}
-	for _, deployment := range deployments {
-		sliver := Sliver{
-			URN:              deployment.Annotations[constants.Fed4FireSliver],
-			Expires:          deployment.Annotations[constants.Fed4FireExpires],
-			AllocationStatus: constants.GeniStateProvisioned, // TODO: Return the proper state.
-		}
-		reply.Data.Value.Slivers = append(reply.Data.Value.Slivers, sliver)
-	}
-	// TODO: Enclosing slice URN / check that all the slivers belong to the same slice OR a single slice identifier.
-	reply.Data.Value.URN = args.URNs[0]
+
 	reply.Data.Code.Code = constants.GeniCodeSuccess
 	return nil
 }

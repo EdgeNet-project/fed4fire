@@ -2,12 +2,11 @@ package service
 
 import (
 	"fmt"
+	"k8s.io/klog/v2"
 	"net/http"
 	"time"
 
 	"github.com/EdgeNet-project/fed4fire/pkg/constants"
-	"github.com/EdgeNet-project/fed4fire/pkg/identifiers"
-	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -20,9 +19,17 @@ type RenewArgs struct {
 
 type RenewReply struct {
 	Data struct {
-		Code  Code     `xml:"code"`
-		Value []Sliver `xml:"value"`
+		Code   Code     `xml:"code"`
+		Output string   `xml:"output"`
+		Value  []Sliver `xml:"value"`
 	}
+}
+
+func (v *RenewReply) SetAndLogError(err error, msg string, keysAndValues ...interface{}) error {
+	klog.ErrorS(err, msg, keysAndValues...)
+	v.Data.Code.Code = constants.GeniCodeError
+	v.Data.Output = fmt.Sprintf("%s: %s", msg, err)
+	return nil
 }
 
 // Renew the named slivers renewed, with their expiration extended.
@@ -32,39 +39,36 @@ type RenewReply struct {
 // though different policies may apply to slivers in the different states,
 // resulting in much shorter max expiration times for geni_allocated slivers.
 func (s *Service) Renew(r *http.Request, args *RenewArgs, reply *RenewReply) error {
-	// TODO: Check credentials
-	// TODO: Calling Renew on an unknown, deleted or expired sliver (by explicit URN) shall result in an error
-	// (e.g. SEARCHFAILED, EXPIRED or ERROR geni_code)
-	// (unless geni_best_effort is true, in which case the method may succeed, but return a geni_error for each sliver that failed).
-	// TODO: Implement geni_best_effort.
-	// It is legal to attempt to renew a sliver to a sooner expiration time than the sliver was previously due to expire.
+	slivers, err := s.AuthorizeAndListSlivers(
+		r.Context(),
+		r.Header.Get(constants.HttpHeaderUser),
+		args.URNs,
+		args.Credentials,
+	)
+	if err != nil {
+		return reply.SetAndLogError(err, constants.ErrorListResources)
+	}
+
 	expirationTime, err := time.Parse(time.RFC3339, args.ExpirationTime)
 	if err != nil {
-		// TODO: Handle error
-		fmt.Println(err)
+		return reply.SetAndLogError(err, constants.ErrorBadTime)
 	}
-	toUpdate := make([]appsv1.Deployment, 0)
-	for _, urn := range args.URNs {
-		identifier, err := identifiers.Parse(urn)
-		if err != nil {
-			// TODO: Handle error
-			fmt.Println(err)
+
+	for _, sliver := range slivers {
+		if time.Now().After(sliver.Spec.Expires.Time) {
+			return reply.SetAndLogError(
+				fmt.Errorf("sliver has expired"),
+				constants.ErrorUpdateResource,
+			)
 		}
-		deployments, err := s.GetDeployments(r.Context(), *identifier)
+		sliver.Spec.Expires = metav1.NewTime(expirationTime)
+		sliver, err := s.Slivers().Update(r.Context(), &sliver, metav1.UpdateOptions{})
 		if err != nil {
-			// TODO: Handle error
-			fmt.Println(err)
+			return reply.SetAndLogError(err, constants.ErrorUpdateResource)
 		}
-		toUpdate = append(toUpdate, deployments...)
+		reply.Data.Value = append(reply.Data.Value, NewSliver(*sliver))
 	}
-	for _, deployment := range toUpdate {
-		deployment.Annotations[constants.Fed4FireExpires] = expirationTime.Format(time.RFC3339)
-		_, err := s.Deployments().Update(r.Context(), &deployment, metav1.UpdateOptions{})
-		if err != nil {
-			// TODO: Handle error
-			fmt.Println(err)
-		}
-	}
-	// TODO: Return slivers.
+
+	reply.Data.Code.Code = constants.GeniCodeSuccess
 	return nil
 }

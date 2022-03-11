@@ -21,9 +21,10 @@ type Rspec struct {
 type Node struct {
 	XMLName            xml.Name     `xml:"node"`
 	ClientID           string       `xml:"client_id,attr,omitempty"`
-	ComponentID        string       `xml:"component_id,attr"`
-	ComponentManagerID string       `xml:"component_manager_id,attr"`
-	ComponentName      string       `xml:"component_name,attr"`
+	ComponentID        string       `xml:"component_id,attr,omitempty"`
+	ComponentManagerID string       `xml:"component_manager_id,attr,omitempty"`
+	ComponentName      string       `xml:"component_name,attr,omitempty"`
+	SliverID           string       `xml:"sliver_id,attr,omitempty"`
 	Exclusive          bool         `xml:"exclusive,attr"`
 	HardwareType       HardwareType `xml:"hardware_type"`
 	SliverTypes        []SliverType `xml:"sliver_type"`

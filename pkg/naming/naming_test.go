@@ -10,10 +10,7 @@ import (
 var testSliceIdentifier = identifiers.MustParse("urn:publicid:IDN+example.org+slice+test")
 
 func TestSliceHash(t *testing.T) {
-	h, err := SliceHash(testSliceIdentifier)
-	if err != nil {
-		t.Errorf("SliverNamer() = %s; want nil", err)
-	}
+	h := SliceHash(testSliceIdentifier.URN())
 	errs := validation.IsValidLabelValue(h)
 	if len(errs) > 0 {
 		t.Errorf("%s", errs)
@@ -21,10 +18,7 @@ func TestSliceHash(t *testing.T) {
 }
 
 func TestSliverName(t *testing.T) {
-	h, err := SliverName(testSliceIdentifier, "Client$Id&*")
-	if err != nil {
-		t.Errorf("SliverNamer() = %s; want nil", err)
-	}
+	h := SliverName(testSliceIdentifier.URN(), "Client$Id&*")
 	errs := validation.IsValidLabelValue(h)
 	if len(errs) > 0 {
 		t.Errorf("%s", errs)
