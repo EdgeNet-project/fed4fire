@@ -2,7 +2,6 @@ IMAGE := slok/kube-code-generator:v1.21.1
 
 DIRECTORY := $(PWD)
 PROJECT_PACKAGE := github.com/EdgeNet-project/fed4fire
-DEPS_CMD := go mod tidy
 
 default: generate
 
@@ -28,10 +27,6 @@ generate-crd:
 	-e CRD_TYPES_PATH=/src/pkg/apis \
 	-e CRD_OUT_PATH=/src/crd \
 	$(IMAGE) update-crd.sh
-
-.PHONY: deps
-deps:
-	$(DEPS_CMD)
 
 .PHONY: clean
 clean:
