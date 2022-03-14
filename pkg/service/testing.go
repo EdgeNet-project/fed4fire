@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/pem"
 	"encoding/xml"
+	"github.com/EdgeNet-project/fed4fire/pkg/generated/clientset/versioned"
 	"net/http"
 	"time"
 
@@ -19,10 +20,12 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	f4ftestclient "github.com/EdgeNet-project/fed4fire/pkg/generated/clientset/versioned/fake"
 	"k8s.io/client-go/kubernetes"
 	kubetestclient "k8s.io/client-go/kubernetes/fake"
 )
 
+var testAuthorityIdentifier = identifiers.MustParse("urn:publicid:IDN+example.org+authority+am")
 var testAuthorityCaIdentifier = identifiers.MustParse("urn:publicid:IDN+example.org+authority+ca")
 var testSliceIdentifier = identifiers.MustParse("urn:publicid:IDN+example.org+slice+test")
 var testUserIdentifier = identifiers.MustParse("urn:publicid:IDN+example.org+user+test")
@@ -46,9 +49,10 @@ var userCert, _ = utils.CreateCertificate(
 var testSliceCredential = createCredential(testUserIdentifier, testSliceIdentifier)
 
 func testService() *Service {
-	//var edgenetClient versioned.Interface = edgenettestclient.NewSimpleClientset()
+	var fed4fireClient versioned.Interface = f4ftestclient.NewSimpleClientset()
 	var kubernetesClient kubernetes.Interface = kubetestclient.NewSimpleClientset()
 	return &Service{
+		AuthorityIdentifier: testAuthorityIdentifier,
 		ContainerImages: map[string]string{
 			"ubuntu2004": "docker.io/library/ubuntu:20.04",
 		},
@@ -56,9 +60,9 @@ func testService() *Service {
 		ContainerMemoryLimit: "2Gi",
 		NamespaceCpuLimit:    "8",
 		NamespaceMemoryLimit: "8Gi",
-		//EdgenetClient:        edgenetClient,
-		KubernetesClient:    kubernetesClient,
-		TrustedCertificates: [][]byte{authorityCert},
+		Fed4FireClient:       fed4fireClient,
+		KubernetesClient:     kubernetesClient,
+		TrustedCertificates:  [][]byte{authorityCert},
 	}
 }
 

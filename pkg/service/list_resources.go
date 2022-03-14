@@ -30,10 +30,11 @@ type ListResourcesReply struct {
 func (v *ListResourcesReply) SetAndLogError(
 	err error,
 	msg string,
+	code int,
 	keysAndValues ...interface{},
 ) error {
-	klog.ErrorS(err, msg, keysAndValues...)
-	v.Data.Code.Code = constants.GeniCodeError
+	klog.ErrorSDepth(1, err, msg, keysAndValues)
+	v.Data.Code.Code = code
 	v.Data.Output = fmt.Sprintf("%s: %s", msg, err)
 	return nil
 }
@@ -49,17 +50,16 @@ func (s *Service) ListResources(
 ) error {
 	userIdentifier, err := identifiers.Parse(r.Header.Get(constants.HttpHeaderUser))
 	if err != nil {
-		return reply.SetAndLogError(err, constants.ErrorBadIdentifier)
+		return reply.SetAndLogError(err, constants.ErrorBadIdentifier, constants.GeniCodeError)
 	}
 	_, err = FindCredential(*userIdentifier, nil, args.Credentials, s.TrustedCertificates)
 	if err != nil {
-		reply.Data.Code.Code = constants.GeniCodeBadargs
-		return nil
+		return reply.SetAndLogError(err, constants.ErrorBadCredentials, constants.GeniCodeBadargs)
 	}
 
 	nodes, err := s.Nodes().List(r.Context(), metav1.ListOptions{})
 	if err != nil {
-		return reply.SetAndLogError(err, constants.ErrorListResources)
+		return reply.SetAndLogError(err, constants.ErrorListResources, constants.GeniCodeError)
 	}
 
 	v := rspec.Rspec{Type: rspec.RspecTypeAdvertisement}
@@ -72,7 +72,7 @@ func (s *Service) ListResources(
 
 	xml_, err := xml.Marshal(v)
 	if err != nil {
-		return reply.SetAndLogError(err, constants.ErrorSerializeRspec)
+		return reply.SetAndLogError(err, constants.ErrorSerializeRspec, constants.GeniCodeError)
 	}
 
 	if args.Options.Compressed {

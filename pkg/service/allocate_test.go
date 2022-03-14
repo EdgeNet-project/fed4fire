@@ -1,13 +1,9 @@
 package service
 
 import (
-	"context"
 	"testing"
 
 	"github.com/EdgeNet-project/fed4fire/pkg/constants"
-
-	"github.com/EdgeNet-project/fed4fire/pkg/utils"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestAllocate_Single(t *testing.T) {
@@ -33,16 +29,6 @@ func TestAllocate_Single(t *testing.T) {
 	got := reply.Data.Code.Code
 	if got != constants.GeniCodeSuccess {
 		t.Errorf("Code = %d; want %d", got, constants.GeniCodeSuccess)
-	}
-	deployments, err := s.Deployments().List(context.TODO(), v1.ListOptions{})
-	utils.Check(err)
-	if len(deployments.Items) != 1 {
-		t.Errorf("len(deployments) = %d; want 1", len(deployments.Items))
-	}
-	services, err := s.Services().List(context.TODO(), v1.ListOptions{})
-	utils.Check(err)
-	if len(services.Items) != 1 {
-		t.Errorf("len(services) = %d; want 1", len(services.Items))
 	}
 }
 
@@ -95,16 +81,5 @@ func TestAllocate_Many(t *testing.T) {
 	got = reply.Data.Code.Code
 	if got != constants.GeniCodeSuccess {
 		t.Errorf("Code = %d; want %d", got, constants.GeniCodeSuccess)
-	}
-	// Verify deployments
-	deployments, err := s.Deployments().List(context.TODO(), v1.ListOptions{})
-	utils.Check(err)
-	if len(deployments.Items) != 2 {
-		t.Errorf("len(deployments) = %d; want 2", len(deployments.Items))
-	}
-	services, err := s.Services().List(context.TODO(), v1.ListOptions{})
-	utils.Check(err)
-	if len(services.Items) != 2 {
-		t.Errorf("len(services) = %d; want 2", len(services.Items))
 	}
 }

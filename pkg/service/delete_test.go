@@ -1,13 +1,9 @@
 package service
 
 import (
-	"context"
 	"testing"
 
 	"github.com/EdgeNet-project/fed4fire/pkg/constants"
-
-	"github.com/EdgeNet-project/fed4fire/pkg/utils"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestDelete_Slice(t *testing.T) {
@@ -49,11 +45,5 @@ func TestDelete_Slice(t *testing.T) {
 	got = deleteReply.Data.Code.Code
 	if got != constants.GeniCodeSuccess {
 		t.Errorf("Code = %d; want %d", got, constants.GeniCodeSuccess)
-	}
-	// Verify deployments
-	deployments, err := s.Deployments().List(context.TODO(), v1.ListOptions{})
-	utils.Check(err)
-	if len(deployments.Items) != 0 {
-		t.Errorf("len(deployments) = %d; want 0", len(deployments.Items))
 	}
 }

@@ -26,7 +26,7 @@ type RenewReply struct {
 }
 
 func (v *RenewReply) SetAndLogError(err error, msg string, keysAndValues ...interface{}) error {
-	klog.ErrorS(err, msg, keysAndValues...)
+	klog.ErrorSDepth(1, err, msg, keysAndValues)
 	v.Data.Code.Code = constants.GeniCodeError
 	v.Data.Output = fmt.Sprintf("%s: %s", msg, err)
 	return nil

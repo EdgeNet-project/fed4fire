@@ -7,6 +7,7 @@ import (
 	"github.com/EdgeNet-project/fed4fire/pkg/constants"
 	"github.com/EdgeNet-project/fed4fire/pkg/utils"
 	"html"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"net/http"
 	"time"
 
@@ -37,7 +38,7 @@ type AllocateReply struct {
 }
 
 func (v *AllocateReply) SetAndLogError(err error, msg string, keysAndValues ...interface{}) error {
-	klog.ErrorS(err, msg, keysAndValues...)
+	klog.ErrorSDepth(1, err, msg, keysAndValues)
 	v.Data.Code.Code = constants.GeniCodeError
 	v.Data.Output = fmt.Sprintf("%s: %s", msg, err)
 	return nil
@@ -121,9 +122,16 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 		}
 		sliver, err = s.Slivers().Create(r.Context(), sliver, metav1.CreateOptions{})
 		if err != nil {
-			return reply.SetAndLogError(err, constants.ErrorCreateResource)
+			if errors.IsAlreadyExists(err) {
+				sliver, err = s.Slivers().Get(r.Context(), sliverName, metav1.GetOptions{})
+				if err != nil {
+					return reply.SetAndLogError(err, constants.ErrorGetResource)
+				}
+			} else {
+				return reply.SetAndLogError(err, constants.ErrorCreateResource)
+			}
 		}
-		allocationStatus, operationalStatus := s.GetSliverStatus(r.Context(), sliver.Name)
+		allocationStatus, operationalStatus := s.GetSliverStatus(r.Context(), sliverName)
 		reply.Data.Value.Slivers = append(
 			reply.Data.Value.Slivers,
 			NewSliver(*sliver, allocationStatus, operationalStatus),
