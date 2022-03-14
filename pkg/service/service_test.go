@@ -6,35 +6,35 @@ import (
 
 func TestFindMatchingCredential(t *testing.T) {
 	// Untrusted credentials
-	_, err := FindMatchingCredential(
+	_, err := FindCredential(
 		testUserIdentifier,
-		testSliceIdentifier,
+		&testSliceIdentifier,
 		[]Credential{testSliceCredential},
 		[][]byte{},
 	)
 	if err == nil {
-		t.Errorf("FindMatchingCredential() = nil; want error")
+		t.Errorf("FindCredential() = nil; want error")
 	}
 
 	// Missing credentials
-	_, err = FindMatchingCredential(
+	_, err = FindCredential(
 		testUserIdentifier,
-		testSliceIdentifier,
+		&testSliceIdentifier,
 		[]Credential{},
 		[][]byte{authorityCert},
 	)
 	if err == nil {
-		t.Errorf("FindMatchingCredential() = nil; want error")
+		t.Errorf("FindCredential() = nil; want error")
 	}
 
 	// Valid credentials
-	_, err = FindMatchingCredential(
+	_, err = FindCredential(
 		testUserIdentifier,
-		testSliceIdentifier,
+		&testSliceIdentifier,
 		[]Credential{testSliceCredential},
 		[][]byte{authorityCert},
 	)
 	if err != nil {
-		t.Errorf("FindMatchingCredential() = %s; want nil", err)
+		t.Errorf("FindCredential() = %s; want nil", err)
 	}
 }

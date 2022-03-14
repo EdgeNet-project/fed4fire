@@ -81,9 +81,9 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 	if err != nil {
 		return reply.SetAndLogError(err, constants.ErrorBadIdentifier)
 	}
-	_, err = FindMatchingCredential(
+	_, err = FindCredential(
 		*userIdentifier,
-		*sliceIdentifier,
+		sliceIdentifier,
 		args.Credentials,
 		s.TrustedCertificates,
 	)
@@ -91,7 +91,7 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 		return reply.SetAndLogError(err, constants.ErrorBadCredentials)
 	}
 
-	// TODO: Implement RSpec passthroughs + node selection.
+	// TODO: Implement RSpec passthroughs + arch selection + node selection.
 	requestRspec := rspec.Rspec{}
 	err = xml.Unmarshal([]byte(html.UnescapeString(args.Rspec)), &requestRspec)
 	if err != nil {
@@ -102,20 +102,13 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 
 	for i, node := range requestRspec.Nodes {
 		sliverName := naming.SliverName(sliceIdentifier.URN(), node.ClientID)
-		sliverType := rspec.SliverType{
-			Name: "container",
-			DiskImages: []rspec.DiskImage{{
-				// TODO
-				Name: utils.Keys(s.ContainerImages)[0],
-			}},
+		diskImage := s.ContainerImages[utils.Keys(s.ContainerImages)[0]]
+		if len(node.SliverTypes) > 0 && len(node.SliverTypes[0].DiskImages) > 0 {
+			if image, ok := s.ContainerImages[node.SliverTypes[0].DiskImages[0].Name]; ok {
+				diskImage = image
+			}
 		}
-		if len(node.SliverTypes) > 0 {
-			// TODO: Validate Rspec:
-			//  - At-most one sliver type is specified
-			//  - At-most one disk image is specified
-			sliverType = node.SliverTypes[0]
-		}
-		// TODO
+		// TODO: Make sure the best effort tests pass.
 		//identifier, err := identifiers.Parse(sliverType.DiskImages[0].Name)
 		//if err != nil {
 		//	return "", err
@@ -143,7 +136,7 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 				UserURN:  userIdentifier.URN(),
 				Expires:  metav1.NewTime(time.Now().Add(24 * time.Hour)),
 				ClientID: node.ClientID,
-				Image:    s.ContainerImages[sliverType.DiskImages[0].Name],
+				Image:    diskImage,
 			},
 		}
 		sliver, err = s.Slivers().Create(r.Context(), sliver, metav1.CreateOptions{})

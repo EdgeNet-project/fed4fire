@@ -6,10 +6,8 @@ import (
 	"fmt"
 	v1 "github.com/EdgeNet-project/fed4fire/pkg/apis/fed4fire/v1"
 	"github.com/EdgeNet-project/fed4fire/pkg/constants"
-	"github.com/EdgeNet-project/fed4fire/pkg/identifiers"
 	"github.com/EdgeNet-project/fed4fire/pkg/naming"
 	"github.com/EdgeNet-project/fed4fire/pkg/rspec"
-	"github.com/EdgeNet-project/fed4fire/pkg/sfa"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -45,45 +43,9 @@ func (v *ProvisionReply) SetAndLogError(err error, msg string, keysAndValues ...
 	return nil
 }
 
-// TODO: Move to proper file.
-func FindCredentialForSliver(
-	userIdentifier identifiers.Identifier,
-	sliver v1.Sliver,
-	credentials []Credential,
-	trustedCertificates [][]byte,
-) (*sfa.Credential, error) {
-	sliverIdentifier, err := identifiers.Parse(sliver.Spec.URN)
-	if err != nil {
-		return nil, err
-	}
-	sliceIdentifier, err := identifiers.Parse(sliver.Spec.SliceURN)
-	if err != nil {
-		return nil, err
-	}
-	credential, err := FindMatchingCredential(
-		userIdentifier,
-		*sliverIdentifier,
-		credentials,
-		trustedCertificates,
-	)
-	if err == nil {
-		return credential, nil
-	}
-	credential, err = FindMatchingCredential(
-		userIdentifier,
-		*sliceIdentifier,
-		credentials,
-		trustedCertificates,
-	)
-	if err == nil {
-		return credential, nil
-	}
-	return nil, fmt.Errorf("no matching credential found")
-}
-
 // Provision requests that the named geni_allocated slivers be made geni_provisioned,
 // instantiating or otherwise realizing the resources, such that they have a valid geni_operational_status
-// and may possibly be made geni_ready for experimenter use.
+// and may be made geni_ready for experimenter use.
 // https://groups.geni.net/geni/wiki/GAPI_AM_API_V3#Provision
 func (s *Service) Provision(r *http.Request, args *ProvisionArgs, reply *ProvisionReply) error {
 	slivers, err := s.AuthorizeAndListSlivers(
@@ -151,19 +113,6 @@ func (s *Service) Provision(r *http.Request, args *ProvisionArgs, reply *Provisi
 			Available:          rspec.Available{Now: false},
 			ClientID:           sliver.Spec.ClientID,
 			Exclusive:          false,
-			HardwareType: rspec.HardwareType{
-				// We don't know yet on which node/arch the deployment will be scheduled.
-				Name: fmt.Sprintf("kubernetes-unknown"),
-			},
-			// TODO: When to get these info? Wait for kube provision here?
-			//Services: rspec.Services{
-			//	Logins: []rspec.Login{{
-			//		Authentication: rspec.RspecLoginAuthenticationSSH,
-			//		Hostname:       "example.org",
-			//		Port:           22, // TODO
-			//		Username:       "root",
-			//	}},
-			//},
 		})
 	}
 

@@ -96,7 +96,7 @@ func (s *Service) Describe(r *http.Request, args *DescribeArgs, reply *DescribeR
 			SliverID:           sliver.Spec.URN,
 			Exclusive:          false,
 			HardwareType: rspec.HardwareType{
-				// We don't know yet on which node/arch the deployment will be scheduled.
+				// TODO: Set arch if available.
 				Name: fmt.Sprintf("kubernetes-unknown"),
 			},
 			Services: rspec.Services{

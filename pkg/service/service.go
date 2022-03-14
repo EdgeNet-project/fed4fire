@@ -97,7 +97,6 @@ func (s Service) AuthorizeAndListSlivers(
 	resourceIdentifiersStr []string,
 	credentials []Credential,
 ) ([]v1.Sliver, error) {
-	// TODO: Also valid slice credentials if no slivers?
 	userIdentifier, err := identifiers.Parse(userIdentifierStr)
 	if err != nil {
 		return nil, err
@@ -112,7 +111,7 @@ func (s Service) AuthorizeAndListSlivers(
 		// This is mostly to be compatible with the spec. that expects an error on an
 		// un-existing slice (instead of a list of 0 slivers).
 		if identifier.ResourceType == identifiers.ResourceTypeSlice {
-			_, err := FindMatchingCredential(*userIdentifier, *identifier, credentials, s.TrustedCertificates)
+			_, err := FindCredential(*userIdentifier, identifier, credentials, s.TrustedCertificates)
 			if err != nil {
 				return nil, err
 			}
@@ -238,9 +237,9 @@ func (c Credential) ValidatedSFA(trustedCertificates [][]byte) (*sfa.Credential,
 	return &v.Credential, nil
 }
 
-func FindMatchingCredential(
+func FindCredential(
 	userIdentifier identifiers.Identifier,
-	targetIdentifier identifiers.Identifier,
+	targetIdentifier *identifiers.Identifier,
 	credentials []Credential,
 	trustedCertificates [][]byte,
 ) (*sfa.Credential, error) {
@@ -260,33 +259,46 @@ func FindMatchingCredential(
 		if err != nil {
 			return nil, err
 		}
-		if ownerId.Equal(userIdentifier) && targetId.Equal(targetIdentifier) {
+		if targetIdentifier == nil && ownerId.Equal(userIdentifier) {
+			return validated, nil
+		} else if targetIdentifier != nil && ownerId.Equal(userIdentifier) && targetId.Equal(*targetIdentifier) {
 			return validated, nil
 		}
 	}
 	return nil, fmt.Errorf("no matching credential found")
 }
 
-func FindValidCredential(
+func FindCredentialForSliver(
 	userIdentifier identifiers.Identifier,
+	sliver v1.Sliver,
 	credentials []Credential,
 	trustedCertificates [][]byte,
 ) (*sfa.Credential, error) {
-	for _, credential := range credentials {
-		if credential.Type != constants.GeniCredentialTypeSfa {
-			continue
-		}
-		validated, err := credential.ValidatedSFA(trustedCertificates)
-		if err != nil {
-			return nil, err
-		}
-		ownerId, err := identifiers.Parse(validated.OwnerURN)
-		if err != nil {
-			return nil, err
-		}
-		if ownerId.Equal(userIdentifier) {
-			return validated, nil
-		}
+	sliverIdentifier, err := identifiers.Parse(sliver.Spec.URN)
+	if err != nil {
+		return nil, err
 	}
-	return nil, fmt.Errorf("no valid credential found")
+	sliceIdentifier, err := identifiers.Parse(sliver.Spec.SliceURN)
+	if err != nil {
+		return nil, err
+	}
+	credential, err := FindCredential(
+		userIdentifier,
+		sliverIdentifier,
+		credentials,
+		trustedCertificates,
+	)
+	if err == nil {
+		return credential, nil
+	}
+	credential, err = FindCredential(
+		userIdentifier,
+		sliceIdentifier,
+		credentials,
+		trustedCertificates,
+	)
+	if err == nil {
+		return credential, nil
+	}
+	return nil, fmt.Errorf("no matching credential found")
 }

@@ -51,7 +51,7 @@ func (s *Service) ListResources(
 	if err != nil {
 		return reply.SetAndLogError(err, "Failed to parse user URN")
 	}
-	_, err = FindValidCredential(*userIdentifier, args.Credentials, s.TrustedCertificates)
+	_, err = FindCredential(*userIdentifier, nil, args.Credentials, s.TrustedCertificates)
 	if err != nil {
 		reply.Data.Code.Code = constants.GeniCodeBadargs
 		return nil
