@@ -1,7 +1,6 @@
 package service
 
 import (
-	"encoding/xml"
 	"fmt"
 	"github.com/EdgeNet-project/fed4fire/pkg/constants"
 	"github.com/EdgeNet-project/fed4fire/pkg/rspec"
@@ -84,11 +83,11 @@ func (s *Service) Describe(r *http.Request, args *DescribeArgs, reply *DescribeR
 		)
 	}
 
-	xml_, err := xml.Marshal(returnRspec)
+	xml_, err := MarshalRspec(returnRspec, args.Options.Compressed)
 	if err != nil {
 		return reply.SetAndLogError(err, constants.ErrorSerializeRspec)
 	}
-	reply.Data.Value.Rspec = string(xml_)
+	reply.Data.Value.Rspec = xml_
 	reply.Data.Code.Code = constants.GeniCodeSuccess
 	return nil
 }

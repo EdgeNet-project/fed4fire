@@ -36,9 +36,7 @@ This package implements the [GENI Aggregate Manager API Version 3](https://group
 
 ## Architecture
 
-- The AM server is stateless, all the information about slices and slivers is stored in Kubernetes objects annotations
-- Slices map to Kubernetes namespaces
-- Slivers map to Kubernetes deployments
+- The AM server is stateless, all the information about slices and slivers is stored in Kubernetes objects annotations.
 - Object names are derived from the first 8 bytes of the SHA512 hash of the RSpec name. This allows to create objects with names that are valid in the GENI spec, but not in Kubernetes which mostly allows only alphanumeric chars.
 
 ### Workarounds

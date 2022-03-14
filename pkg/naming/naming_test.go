@@ -1,6 +1,7 @@
 package naming
 
 import (
+	"github.com/stretchr/testify/assert"
 	"testing"
 
 	"github.com/EdgeNet-project/fed4fire/pkg/identifiers"
@@ -12,15 +13,11 @@ var testSliceIdentifier = identifiers.MustParse("urn:publicid:IDN+example.org+sl
 func TestSliceHash(t *testing.T) {
 	h := SliceHash(testSliceIdentifier.URN())
 	errs := validation.IsValidLabelValue(h)
-	if len(errs) > 0 {
-		t.Errorf("%s", errs)
-	}
+	assert.Len(t, errs, 0)
 }
 
 func TestSliverName(t *testing.T) {
 	h := SliverName(testSliceIdentifier.URN(), "Client$Id&*")
 	errs := validation.IsValidLabelValue(h)
-	if len(errs) > 0 {
-		t.Errorf("%s", errs)
-	}
+	assert.Len(t, errs, 0)
 }

@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"encoding/xml"
 	"fmt"
 	v1 "github.com/EdgeNet-project/fed4fire/pkg/apis/fed4fire/v1"
 	"github.com/EdgeNet-project/fed4fire/pkg/constants"
@@ -60,9 +59,7 @@ func (s *Service) Provision(r *http.Request, args *ProvisionArgs, reply *Provisi
 
 	sshKeys := make([]string, 0)
 	for _, user := range args.Options.Users {
-		for _, key := range user.Keys {
-			sshKeys = append(sshKeys, key)
-		}
+		sshKeys = append(sshKeys, user.Keys...)
 	}
 
 	// Build the sliver resources
@@ -101,7 +98,6 @@ func (s *Service) Provision(r *http.Request, args *ProvisionArgs, reply *Provisi
 	returnRspec := rspec.Rspec{Type: rspec.RspecTypeManifest}
 
 	for _, sliver := range slivers {
-
 		sliver, err := s.Slivers().Get(r.Context(), sliver.Name, metav1.GetOptions{})
 		if err != nil {
 			return reply.SetAndLogError(err, constants.ErrorGetResource)
@@ -119,11 +115,11 @@ func (s *Service) Provision(r *http.Request, args *ProvisionArgs, reply *Provisi
 		})
 	}
 
-	xml_, err := xml.Marshal(returnRspec)
+	xml_, err := MarshalRspec(returnRspec, args.Options.Compressed)
 	if err != nil {
 		return reply.SetAndLogError(err, constants.ErrorSerializeRspec)
 	}
-	reply.Data.Value.Rspec = string(xml_)
+	reply.Data.Value.Rspec = xml_
 	reply.Data.Code.Code = constants.GeniCodeSuccess
 	return nil
 }

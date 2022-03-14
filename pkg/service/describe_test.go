@@ -1,25 +1,22 @@
 package service
 
 import (
+	"github.com/EdgeNet-project/fed4fire/pkg/constants"
 	"github.com/stretchr/testify/assert"
 	"testing"
-
-	"github.com/EdgeNet-project/fed4fire/pkg/constants"
 )
 
-func TestDelete_Slice(t *testing.T) {
+func TestDescribe(t *testing.T) {
 	s := testService()
 	r := testRequest()
 	allocateTestSlice(s, r, testRspecMany)
-	provisionTestSlice(s, r)
-	args := &DeleteArgs{
+	args := &DescribeArgs{
 		URNs:        []string{testSliceIdentifier.URN()},
 		Credentials: []Credential{testSliceCredential},
 	}
-	reply := &DeleteReply{}
-	err := s.Delete(r, args, reply)
+	reply := &DescribeReply{}
+	err := s.Describe(r, args, reply)
 	assert.Nil(t, err)
 	assert.Equal(t, constants.GeniCodeSuccess, reply.Data.Code.Code)
-	slivers := listTestSlivers(s)
-	assert.Len(t, slivers, 0)
+	assert.Len(t, reply.Data.Value.Slivers, 2)
 }

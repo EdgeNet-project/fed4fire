@@ -1,14 +1,12 @@
 package service
 
 import (
-	"encoding/xml"
 	"fmt"
 	"github.com/EdgeNet-project/fed4fire/pkg/constants"
 	"net/http"
 
 	"github.com/EdgeNet-project/fed4fire/pkg/identifiers"
 	"github.com/EdgeNet-project/fed4fire/pkg/rspec"
-	"github.com/EdgeNet-project/fed4fire/pkg/utils"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
@@ -70,17 +68,11 @@ func (s *Service) ListResources(
 		}
 	}
 
-	xml_, err := xml.Marshal(v)
+	xml_, err := MarshalRspec(v, args.Options.Compressed)
 	if err != nil {
 		return reply.SetAndLogError(err, constants.ErrorSerializeRspec, constants.GeniCodeError)
 	}
-
-	if args.Options.Compressed {
-		reply.Data.Value = utils.CompressZlibBase64(xml_)
-	} else {
-		reply.Data.Value = string(xml_)
-	}
-
+	reply.Data.Value = xml_
 	reply.Data.Code.Code = constants.GeniCodeSuccess
 	return nil
 }
@@ -127,7 +119,7 @@ func rspecForNode(
 			Longitude: nodeLongitude,
 		},
 		HardwareType: rspec.HardwareType{
-			Name: fmt.Sprintf(nodeArch),
+			Name: nodeArch,
 		},
 		SliverType: rspec.SliverType{
 			Name:       "container",

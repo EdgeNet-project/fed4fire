@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"fmt"
+	"github.com/stretchr/testify/assert"
 	"math/big"
 	"testing"
 	"time"
@@ -37,16 +38,10 @@ func TestSignVerify(t *testing.T) {
 	utils.Check(err)
 	doc := fmt.Sprintf("<A><B xml:id=\"ref0\"/>%s</A>", Template)
 	res, err := Sign(*privateKey, derBytes, []byte(doc))
-	if err != nil {
-		t.Errorf("Sign() = %s; want nil", err)
-	}
+	assert.Nil(t, err)
 	err = Verify([][]byte{derBytes}, res)
-	if err != nil {
-		t.Errorf("Verify() = %s; want nil", err)
-	}
+	assert.Nil(t, err)
 	res = bytes.ReplaceAll(res, []byte("<B "), []byte("<C "))
 	err = Verify([][]byte{derBytes}, res)
-	if err == nil {
-		t.Errorf("Verify() = nil; want error")
-	}
+	assert.NotNil(t, err)
 }

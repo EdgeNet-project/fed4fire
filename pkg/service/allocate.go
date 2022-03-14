@@ -139,11 +139,11 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 		returnRspec.Nodes = append(returnRspec.Nodes, requestRspec.Nodes[i])
 	}
 
-	xml_, err := xml.Marshal(returnRspec)
+	xml_, err := MarshalRspec(returnRspec, args.Options.Compressed)
 	if err != nil {
 		return reply.SetAndLogError(err, constants.ErrorSerializeRspec)
 	}
-	reply.Data.Value.Rspec = string(xml_)
+	reply.Data.Value.Rspec = xml_
 	reply.Data.Code.Code = constants.GeniCodeSuccess
 	return nil
 }

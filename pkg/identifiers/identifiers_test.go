@@ -80,3 +80,27 @@ func TestIdentifier_URN(t *testing.T) {
 		t.Errorf("URN() = %v, want %v", got, want)
 	}
 }
+
+func TestIdentifier_Equal(t *testing.T) {
+	id1 := Identifier{
+		Authorities:  []string{"gcf", "gpo", "gpolab"},
+		ResourceType: "node",
+		ResourceName: "switch+1+port+2",
+	}
+	id2 := Identifier{
+		Authorities:  []string{"gcf", "gpo", "gpolab"},
+		ResourceType: "node",
+		ResourceName: "switch+1+port+2",
+	}
+	id3 := Identifier{
+		Authorities:  []string{"gcf", "gpo", "gpolab"},
+		ResourceType: "node",
+		ResourceName: "switch+1+port+3",
+	}
+	if !id1.Equal(id2) {
+		t.Errorf("Equal() = false, want true")
+	}
+	if id1.Equal(id3) {
+		t.Errorf("Equal() = true, want false")
+	}
+}

@@ -11,6 +11,7 @@ require (
 	github.com/maxmouchet/gorilla-xmlrpc v0.0.0-20220310180104-787984fc5e84
 	github.com/oriser/regroup v0.0.0-20210730155327-fca8d7531263
 	github.com/rogpeppe/go-internal v1.8.0 // indirect
+	github.com/stretchr/testify v1.7.0
 	golang.org/x/sys v0.0.0-20210921065528-437939a70204 // indirect
 	golang.org/x/term v0.0.0-20210916214954-140adaaadfaf // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect

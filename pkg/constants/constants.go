@@ -44,6 +44,10 @@ const (
 	Fed4FireUser       = "fed4fire.eu/user"
 )
 
+const (
+	GeniActionStart = "geni_start"
+)
+
 // https://groups.geni.net/geni/attachment/wiki/GAPI_AM_API_V3/CommonConcepts/geni-error-codes.xml
 const (
 	// Success

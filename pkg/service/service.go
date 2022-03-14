@@ -8,9 +8,11 @@ import (
 	v1 "github.com/EdgeNet-project/fed4fire/pkg/apis/fed4fire/v1"
 	"github.com/EdgeNet-project/fed4fire/pkg/generated/clientset/versioned"
 	fed4firev1 "github.com/EdgeNet-project/fed4fire/pkg/generated/clientset/versioned/typed/fed4fire/v1"
+	"github.com/EdgeNet-project/fed4fire/pkg/rspec"
 	"html"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/pointer"
 	"time"
@@ -72,7 +74,9 @@ func (s Service) Slivers() fed4firev1.SliverInterface {
 func (s Service) GetSliver(ctx context.Context, name string) *v1.Sliver {
 	sliver, err := s.Slivers().Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
-		klog.ErrorS(err, "Failed to get sliver")
+		if !errors.IsNotFound(err) {
+			klog.ErrorS(err, "Failed to get sliver")
+		}
 		return nil
 	}
 	return sliver
@@ -81,7 +85,9 @@ func (s Service) GetSliver(ctx context.Context, name string) *v1.Sliver {
 func (s Service) GetSliverArchHostPort(ctx context.Context, name string) (*string, *string, *int) {
 	service, err := s.Services().Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
-		klog.ErrorS(err, "Failed to get service")
+		if !errors.IsNotFound(err) {
+			klog.ErrorS(err, "Failed to get service")
+		}
 		return nil, nil, nil
 	}
 	pods, err := s.Pods().List(ctx, metav1.ListOptions{
@@ -89,14 +95,18 @@ func (s Service) GetSliverArchHostPort(ctx context.Context, name string) (*strin
 		LabelSelector: fmt.Sprintf("%s=%s", constants.Fed4FireSliverName, name),
 	})
 	if err != nil {
-		klog.ErrorS(err, "Failed to list pods")
+		if !errors.IsNotFound(err) {
+			klog.ErrorS(err, "Failed to list pods")
+		}
 		return nil, nil, nil
 	}
 	if len(pods.Items) > 0 {
 		pod := pods.Items[0]
 		node, err := s.Nodes().Get(ctx, pod.Spec.NodeName, metav1.GetOptions{})
 		if err != nil {
-			klog.ErrorS(err, "Failed to get node")
+			if !errors.IsNotFound(err) {
+				klog.ErrorS(err, "Failed to get node")
+			}
 			return nil, nil, nil
 		}
 		for _, address := range node.Status.Addresses {
@@ -117,7 +127,9 @@ func (s Service) GetSliverArchHostPort(ctx context.Context, name string) (*strin
 func (s Service) GetSliverDeployment(ctx context.Context, name string) *appsv1.Deployment {
 	deployment, err := s.Deployments().Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
-		klog.ErrorS(err, "Failed to get deployment")
+		if !errors.IsNotFound(err) {
+			klog.ErrorS(err, "Failed to get deployment")
+		}
 		return nil
 	}
 	return deployment
@@ -382,4 +394,15 @@ func FindCredentialForSliver(
 		return credential, nil
 	}
 	return nil, fmt.Errorf("no matching credential found")
+}
+
+func MarshalRspec(rspec rspec.Rspec, compressed bool) (string, error) {
+	b, err := xml.Marshal(rspec)
+	if err != nil {
+		return "", err
+	}
+	if compressed {
+		return utils.CompressZlibBase64(b), nil
+	}
+	return string(b), nil
 }

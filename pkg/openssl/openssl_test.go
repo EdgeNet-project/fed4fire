@@ -1,6 +1,7 @@
 package openssl
 
 import (
+	"github.com/stretchr/testify/assert"
 	"testing"
 
 	"github.com/EdgeNet-project/fed4fire/pkg/utils"
@@ -9,12 +10,6 @@ import (
 func TestVerify(t *testing.T) {
 	parentCert, parentKey := utils.CreateCertificate("parent", "", "", nil, nil)
 	childCert, _ := utils.CreateCertificate("child", "", "", parentCert, parentKey)
-	err := Verify([][]byte{parentCert}, [][]byte{childCert})
-	if err != nil {
-		t.Errorf("Verify() = %s; want nil", err)
-	}
-	err = Verify([][]byte{}, [][]byte{childCert})
-	if err == nil {
-		t.Errorf("Verify() = nil; want error")
-	}
+	assert.Nil(t, Verify([][]byte{parentCert}, [][]byte{childCert}))
+	assert.NotNil(t, Verify([][]byte{}, [][]byte{childCert}))
 }

@@ -4,7 +4,10 @@ import (
 	"context"
 	"encoding/pem"
 	"encoding/xml"
+	v1 "github.com/EdgeNet-project/fed4fire/pkg/apis/fed4fire/v1"
 	"github.com/EdgeNet-project/fed4fire/pkg/generated/clientset/versioned"
+	"github.com/EdgeNet-project/fed4fire/pkg/rspec"
+	appsv1 "k8s.io/api/apps/v1"
 	"net/http"
 	"time"
 
@@ -17,7 +20,7 @@ import (
 
 	"github.com/EdgeNet-project/fed4fire/pkg/utils"
 
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	f4ftestclient "github.com/EdgeNet-project/fed4fire/pkg/generated/clientset/versioned/fake"
@@ -48,6 +51,25 @@ var userCert, _ = utils.CreateCertificate(
 
 var testSliceCredential = createCredential(testUserIdentifier, testSliceIdentifier)
 
+const testRspecSingle = `<rspec type="request" generated="2013-01-16T14:20:39Z" xsi:schemaLocation="http://www.geni.net/resources/rspec/3 http://www.geni.net/resources/rspec/3/request.xsd " xmlns:client="http://www.protogeni.net/resources/rspec/ext/client/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.geni.net/resources/rspec/3">
+  <node client_id="PC1" component_manager_id="urn:publicid:IDN+example.org+authority+am" exclusive="false">
+    <sliver_type name="container"/>
+  </node>
+</rspec>`
+
+const testRspecMany = `<rspec type="request" generated="2013-01-16T14:20:39Z" xsi:schemaLocation="http://www.geni.net/resources/rspec/3 http://www.geni.net/resources/rspec/3/request.xsd " xmlns:client="http://www.protogeni.net/resources/rspec/ext/client/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.geni.net/resources/rspec/3">
+  <node client_id="PC1" component_manager_id="urn:publicid:IDN+example.org+authority+am" exclusive="false">
+    <sliver_type name="container"/>
+  </node>
+  <node client_id="PC2" component_id="urn:publicid:IDN+example.org+node+node-1" component_manager_id="urn:publicid:IDN+example.org+authority+am" exclusive="false">
+    <sliver_type name="container"/>
+    <hardware_type>
+      <name>amd64</name>
+	</hardware_type>
+  </node>
+</rspec>
+`
+
 func testService() *Service {
 	var fed4fireClient versioned.Interface = f4ftestclient.NewSimpleClientset()
 	var kubernetesClient kubernetes.Interface = kubetestclient.NewSimpleClientset()
@@ -72,12 +94,12 @@ func testRequest() *http.Request {
 	return r
 }
 
-func testNode(name string, ready bool) *v1.Node {
-	var readyStatus v1.ConditionStatus = "True"
+func testNode(name string, ready bool) *corev1.Node {
+	var readyStatus corev1.ConditionStatus = "True"
 	if !ready {
 		readyStatus = "False"
 	}
-	return &v1.Node{
+	return &corev1.Node{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 			Labels: map[string]string{
@@ -85,8 +107,8 @@ func testNode(name string, ready bool) *v1.Node {
 				"edge-net.io/lon": "w-46.635900",
 			},
 		},
-		Status: v1.NodeStatus{
-			Conditions: []v1.NodeCondition{
+		Status: corev1.NodeStatus{
+			Conditions: []corev1.NodeCondition{
 				{
 					Type:   "Ready",
 					Status: readyStatus,
@@ -94,6 +116,49 @@ func testNode(name string, ready bool) *v1.Node {
 			},
 		},
 	}
+}
+
+func allocateTestSlice(service *Service, request *http.Request, rspec string) {
+	args := &AllocateArgs{
+		SliceURN:    testSliceIdentifier.URN(),
+		Credentials: []Credential{testSliceCredential},
+		Rspec:       rspec,
+	}
+	reply := &AllocateReply{}
+	err := service.Allocate(request, args, reply)
+	utils.Check(err)
+}
+
+func provisionTestSlice(service *Service, request *http.Request) {
+	args := &ProvisionArgs{
+		URNs:        []string{testSliceIdentifier.URN()},
+		Credentials: []Credential{testSliceCredential},
+	}
+	reply := &ProvisionReply{}
+	err := service.Provision(request, args, reply)
+	utils.Check(err)
+}
+
+func listTestDeployments(service *Service) []appsv1.Deployment {
+	deployments, err := service.Deployments().List(context.TODO(), metav1.ListOptions{})
+	utils.Check(err)
+	return deployments.Items
+}
+
+func listTestSlivers(service *Service) []v1.Sliver {
+	slivers, err := service.Slivers().List(context.TODO(), metav1.ListOptions{})
+	utils.Check(err)
+	return slivers.Items
+}
+
+func unmarshalTestRspec(s string) rspec.Rspec {
+	v := rspec.Rspec{}
+	err := xml.Unmarshal([]byte(s), &v)
+	if err != nil {
+		err := xml.Unmarshal(utils.DecompressZlibBase64(s), &v)
+		utils.Check(err)
+	}
+	return v
 }
 
 func createCredential(owner identifiers.Identifier, target identifiers.Identifier) Credential {

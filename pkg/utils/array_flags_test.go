@@ -1,12 +1,13 @@
 package utils
 
-import "testing"
+import (
+	"github.com/stretchr/testify/assert"
+	"testing"
+)
 
 func TestArrayFlags(t *testing.T) {
 	var flag ArrayFlags
-	Check(flag.Set("first"))
-	Check(flag.Set("second"))
-	if got := flag.String(); got != "first second" {
-		t.Errorf("String() = %s; want %s", got, "first second")
-	}
+	assert.Nil(t, flag.Set("first"))
+	assert.Nil(t, flag.Set("second"))
+	assert.Equal(t, "first second", flag.String())
 }

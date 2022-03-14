@@ -51,9 +51,9 @@ func (s *Service) PerformOperationalAction(
 		return reply.SetAndLogError(err, constants.ErrorListResources)
 	}
 
-	if args.Action != "geni_start" {
+	if args.Action != constants.GeniActionStart {
 		return reply.SetAndLogError(
-			fmt.Errorf("action must be geni_start"),
+			fmt.Errorf("action must be %s", constants.GeniActionStart),
 			constants.ErrorBadAction,
 		)
 	}
