@@ -49,7 +49,7 @@ func (s *Service) ListResources(
 ) error {
 	userIdentifier, err := identifiers.Parse(r.Header.Get(constants.HttpHeaderUser))
 	if err != nil {
-		return reply.SetAndLogError(err, "Failed to parse user URN")
+		return reply.SetAndLogError(err, constants.ErrorBadIdentifier)
 	}
 	_, err = FindCredential(*userIdentifier, nil, args.Credentials, s.TrustedCertificates)
 	if err != nil {
@@ -59,7 +59,7 @@ func (s *Service) ListResources(
 
 	nodes, err := s.Nodes().List(r.Context(), metav1.ListOptions{})
 	if err != nil {
-		return reply.SetAndLogError(err, "Failed to list nodes")
+		return reply.SetAndLogError(err, constants.ErrorListResources)
 	}
 
 	v := rspec.Rspec{Type: rspec.RspecTypeAdvertisement}
@@ -72,7 +72,7 @@ func (s *Service) ListResources(
 
 	xml_, err := xml.Marshal(v)
 	if err != nil {
-		return reply.SetAndLogError(err, "Failed to serialize response")
+		return reply.SetAndLogError(err, constants.ErrorSerializeRspec)
 	}
 
 	if args.Options.Compressed {
@@ -91,10 +91,10 @@ func rspecForNode(
 	authorityIdentifier identifiers.Identifier,
 	containerImages map[string]string,
 ) rspec.Node {
-	nodeArch := node.Labels["kubernetes.io/arch"]
-	nodeCountry := node.Labels["edge-net.io/country-iso"]
-	nodeLatitude := node.Labels["edge-net.io/lat"]
-	nodeLongitude := node.Labels["edge-net.io/lon"]
+	nodeArch := node.Labels[corev1.LabelArchStable]
+	nodeCountry := node.Labels[constants.EdgeNetLabelCountryISO]
+	nodeLatitude := node.Labels[constants.EdgeNetLabelLatitude]
+	nodeLongitude := node.Labels[constants.EdgeNetLabelLongitude]
 	// n39.92050 -> 39.92050
 	if len(nodeLatitude) > 1 {
 		nodeLatitude = nodeLatitude[1:]
@@ -127,13 +127,11 @@ func rspecForNode(
 			Longitude: nodeLongitude,
 		},
 		HardwareType: rspec.HardwareType{
-			Name: fmt.Sprintf("kubernetes-%s", nodeArch),
+			Name: fmt.Sprintf(nodeArch),
 		},
-		SliverTypes: []rspec.SliverType{
-			{
-				Name:       "container",
-				DiskImages: diskImages,
-			},
+		SliverType: rspec.SliverType{
+			Name:       "container",
+			DiskImages: diskImages,
 		},
 	}
 }

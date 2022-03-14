@@ -16,7 +16,7 @@ services:
       - /app
       - --
       - -authorityName=edge-net.org
-      - -containerImage=ubuntu2004:docker.io/maxmouchet/openssh-server:latest
+      - -containerImage=ubuntu2004:docker.io/maxmouchet/openssh-server:v1
       - -kubeconfig=/root/.kube/config
       - -namespace=fed4fire-dev
       - -serverAddr=0.0.0.0:9443

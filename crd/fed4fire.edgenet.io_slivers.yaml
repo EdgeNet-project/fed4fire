@@ -17,14 +17,11 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
+    - jsonPath: .spec.sliceUrn
+      name: SLICE URN
+      type: string
     - jsonPath: .spec.expires
       name: EXPIRES
-      type: string
-    - jsonPath: .status.allocationStatus
-      name: ALLOCATION STATUS
-      type: string
-    - jsonPath: .status.operationalStatus
-      name: OPERATIONAL STATUS
       type: string
     - jsonPath: .metadata.creationTimestamp
       name: AGE
@@ -50,6 +47,10 @@ spec:
                 type: string
               image:
                 type: string
+              requestedArch:
+                type: string
+              requestedNode:
+                type: string
               sliceUrn:
                 type: string
               urn:
@@ -64,21 +65,10 @@ spec:
             - urn
             - userUrn
             type: object
-          status:
-            properties:
-              allocationStatus:
-                type: string
-              operationalStatus:
-                type: string
-            required:
-            - allocationStatus
-            - operationalStatus
-            type: object
         type: object
     served: true
     storage: true
-    subresources:
-      status: {}
+    subresources: {}
 status:
   acceptedNames:
     kind: ""

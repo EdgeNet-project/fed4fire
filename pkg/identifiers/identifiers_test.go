@@ -34,6 +34,15 @@ func TestMustParse(t *testing.T) {
 				ResourceName: "switch+1+port+2",
 			},
 		},
+		{
+
+			"urn:publicid:IDN+edge-net.org+node+geni-us-tn-cb07.edge-net.io",
+			Identifier{
+				Authorities:  []string{"edge-net.org"},
+				ResourceType: "node",
+				ResourceName: "geni-us-tn-cb07.edge-net.io",
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.urn, func(t *testing.T) {

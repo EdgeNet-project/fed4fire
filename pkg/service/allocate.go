@@ -43,31 +43,6 @@ func (v *AllocateReply) SetAndLogError(err error, msg string, keysAndValues ...i
 	return nil
 }
 
-// TODO
-// Some things to take into account in request RSpecs:
-// - Each node will have exactly one sliver_type in a request.
-// - Each sliver_type will have zero or one disk_image elements.
-//   If your testbed requires disk_image or does not support it,
-//   it should handle bad requests RSpecs with the correct error.
-// - The exclusive element is specified for each node in the request.
-//   Your testbed should check if the specified value (in combination with the sliver_type) is supported,
-//   and return the correct error if not.
-// - The request RSpec might contain links that have a component_manager element that matches your AM.
-//   If your AM does not support links, it should return the correct error.
-// https://doc.fed4fire.eu/testbed_owner/rspec.html#request-rspec
-
-// Some information will be in a request RSpec, that needs to be ignored and copied to the manifest RSpec unaltered.
-// This is important to do correctly.
-// - A request RSpec can contain nodes that have a component_manager_id set to a different AM.
-//   You need to ignore these nodes, and copy them to the manifest RSpec unaltered.
-// - A request RSpec can contain links that do not have a component_manager matching your AM
-//   (links have multiple component_manager_id elements!).
-//   You need to ignore these links, and copy them to the manifest RSpec unaltered.
-// - A request RSpec can contain XML extensions in nodes, links, services, or directly in the rspec element.
-//   Some of these the AM will not know.
-//   It has to ignore these, and preferably also pass them unaltered to the manifest RSpec.
-// https://doc.fed4fire.eu/testbed_owner/rspec.html#request-rspec
-
 // Allocate allocates resources as described in a request RSpec argument to a slice with the named URN.
 // On success, one or more slivers are allocated, containing resources satisfying the request, and assigned to the given slice.
 // This method returns a listing and description of the resources reserved for the slice by this operation, in the form of a manifest RSpec.
@@ -91,33 +66,36 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 		return reply.SetAndLogError(err, constants.ErrorBadCredentials)
 	}
 
-	// TODO: Implement RSpec passthroughs + arch selection + node selection.
 	requestRspec := rspec.Rspec{}
 	err = xml.Unmarshal([]byte(html.UnescapeString(args.Rspec)), &requestRspec)
 	if err != nil {
-		return reply.SetAndLogError(err, "Failed to deserialize rspec")
+		return reply.SetAndLogError(err, constants.ErrorDeserializeRspec)
 	}
 
 	returnRspec := rspec.Rspec{Type: rspec.RspecTypeRequest}
 
 	for i, node := range requestRspec.Nodes {
 		sliverName := naming.SliverName(sliceIdentifier.URN(), node.ClientID)
+		// We're very lenient here: if there is no image specified, or
+		// if a disk image is specified but does not exist, we use a default one.
 		diskImage := s.ContainerImages[utils.Keys(s.ContainerImages)[0]]
-		if len(node.SliverTypes) > 0 && len(node.SliverTypes[0].DiskImages) > 0 {
-			if image, ok := s.ContainerImages[node.SliverTypes[0].DiskImages[0].Name]; ok {
+		if len(node.SliverType.DiskImages) > 0 {
+			if image, ok := s.ContainerImages[node.SliverType.DiskImages[0].Name]; ok {
 				diskImage = image
 			}
 		}
-		// TODO: Make sure the best effort tests pass.
-		//identifier, err := identifiers.Parse(sliverType.DiskImages[0].Name)
-		//if err != nil {
-		//	return "", err
-		//}
-		//if image, ok := containerImages[identifier.ResourceName]; ok {
-		//	return image, nil
-		//} else {
-		//	return "", fmt.Errorf("invalid image name")
-		//}
+		var requestedArch *string
+		if node.HardwareType.Name != "" {
+			requestedArch = &node.HardwareType.Name
+		}
+		var requestedNode *string
+		if node.ComponentID != "" {
+			componentId, err := identifiers.Parse(node.ComponentID)
+			if err != nil {
+				return reply.SetAndLogError(err, constants.ErrorBadIdentifier)
+			}
+			requestedNode = &componentId.ResourceName
+		}
 		labels := map[string]string{
 			// We store the hash since the full URN would not be a valid label value;
 			// this allows us to easily get all the resources belonging to a slice.
@@ -132,30 +110,30 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 			Spec: v1.SliverSpec{
 				URN: s.AuthorityIdentifier.Copy(identifiers.ResourceTypeSliver, sliverName).
 					URN(),
-				SliceURN: sliceIdentifier.URN(),
-				UserURN:  userIdentifier.URN(),
-				Expires:  metav1.NewTime(time.Now().Add(24 * time.Hour)),
-				ClientID: node.ClientID,
-				Image:    diskImage,
+				SliceURN:      sliceIdentifier.URN(),
+				UserURN:       userIdentifier.URN(),
+				Expires:       metav1.NewTime(time.Now().Add(24 * time.Hour)),
+				ClientID:      node.ClientID,
+				Image:         diskImage,
+				RequestedArch: requestedArch,
+				RequestedNode: requestedNode,
 			},
 		}
 		sliver, err = s.Slivers().Create(r.Context(), sliver, metav1.CreateOptions{})
 		if err != nil {
-			return reply.SetAndLogError(err, "Failed to create sliver")
+			return reply.SetAndLogError(err, constants.ErrorCreateResource)
 		}
-		sliver.Status.AllocationStatus = constants.GeniStateAllocated
-		sliver.Status.OperationalStatus = constants.GeniStateNotReady
-		_, err = s.Slivers().UpdateStatus(r.Context(), sliver, metav1.UpdateOptions{})
-		if err != nil {
-			return reply.SetAndLogError(err, "Failed to update sliver status")
-		}
-		reply.Data.Value.Slivers = append(reply.Data.Value.Slivers, NewSliver(*sliver))
+		allocationStatus, operationalStatus := s.GetSliverStatus(r.Context(), sliver.Name)
+		reply.Data.Value.Slivers = append(
+			reply.Data.Value.Slivers,
+			NewSliver(*sliver, allocationStatus, operationalStatus),
+		)
 		returnRspec.Nodes = append(returnRspec.Nodes, requestRspec.Nodes[i])
 	}
 
 	xml_, err := xml.Marshal(returnRspec)
 	if err != nil {
-		return reply.SetAndLogError(err, "Failed to serialize response")
+		return reply.SetAndLogError(err, constants.ErrorSerializeRspec)
 	}
 	reply.Data.Value.Rspec = string(xml_)
 	reply.Data.Code.Code = constants.GeniCodeSuccess

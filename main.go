@@ -120,9 +120,11 @@ func main() {
 	utils.Check(RPC.RegisterService(s, ""))
 
 	gc.GC{
-		Client:    kubeclient,
-		Interval:  5 * time.Second,
-		Namespace: namespace,
+		Fed4FireClient:   f4fclient,
+		KubernetesClient: kubeclient,
+		Interval:         5 * time.Second,
+		Timeout:          30 * time.Second,
+		Namespace:        namespace,
 	}.Start()
 
 	klog.InfoS("Listening", "address", serverAddr)

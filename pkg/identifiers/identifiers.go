@@ -20,7 +20,7 @@ const (
 
 // `urn:publicid:IDN+toplevelauthority[:sub-authority]*\+resource-type\+resource-name`
 var re = regroup.MustCompile(
-	`urn:publicid:IDN\+(?P<authorities>.+?)\+(?P<resource_type>\w+)\+(?P<resource_name>[\w\+]+)`,
+	`urn:publicid:IDN\+(?P<authorities>.+?)\+(?P<resource_type>\w+)\+(?P<resource_name>[\-\.\w\+]+)`,
 )
 
 type Identifier struct {

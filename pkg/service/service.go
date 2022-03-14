@@ -9,6 +9,10 @@ import (
 	"github.com/EdgeNet-project/fed4fire/pkg/generated/clientset/versioned"
 	fed4firev1 "github.com/EdgeNet-project/fed4fire/pkg/generated/clientset/versioned/typed/fed4fire/v1"
 	"html"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/klog/v2"
+	"k8s.io/utils/pointer"
 	"time"
 
 	"github.com/EdgeNet-project/fed4fire/pkg/constants"
@@ -65,6 +69,78 @@ func (s Service) Slivers() fed4firev1.SliverInterface {
 	return s.Fed4FireClient.Fed4fireV1().Slivers(s.Namespace)
 }
 
+func (s Service) GetSliver(ctx context.Context, name string) *v1.Sliver {
+	sliver, err := s.Slivers().Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		klog.ErrorS(err, "Failed to get sliver")
+		return nil
+	}
+	return sliver
+}
+
+func (s Service) GetSliverArchHostPort(ctx context.Context, name string) (*string, *string, *int) {
+	service, err := s.Services().Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		klog.ErrorS(err, "Failed to get service")
+		return nil, nil, nil
+	}
+	pods, err := s.Pods().List(ctx, metav1.ListOptions{
+		FieldSelector: fmt.Sprintf("%s=%s", "status.phase", corev1.PodRunning),
+		LabelSelector: fmt.Sprintf("%s=%s", constants.Fed4FireSliverName, name),
+	})
+	if err != nil {
+		klog.ErrorS(err, "Failed to list pods")
+		return nil, nil, nil
+	}
+	if len(pods.Items) > 0 {
+		pod := pods.Items[0]
+		node, err := s.Nodes().Get(ctx, pod.Spec.NodeName, metav1.GetOptions{})
+		if err != nil {
+			klog.ErrorS(err, "Failed to get node")
+			return nil, nil, nil
+		}
+		for _, address := range node.Status.Addresses {
+			if address.Type == corev1.NodeInternalIP {
+				return pointer.StringPtr(
+						node.Labels[corev1.LabelArchStable],
+					), pointer.StringPtr(
+						address.Address,
+					), pointer.IntPtr(
+						int(service.Spec.Ports[0].NodePort),
+					)
+			}
+		}
+	}
+	return nil, nil, nil
+}
+
+func (s Service) GetSliverDeployment(ctx context.Context, name string) *appsv1.Deployment {
+	deployment, err := s.Deployments().Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		klog.ErrorS(err, "Failed to get deployment")
+		return nil
+	}
+	return deployment
+}
+
+func (s Service) GetSliverStatus(ctx context.Context, name string) (string, string) {
+	allocationStatus := constants.GeniStateUnallocated
+	operationalStatus := constants.GeniStateNotReady
+	sliver := s.GetSliver(ctx, name)
+	if sliver != nil {
+		allocationStatus = constants.GeniStateAllocated
+	}
+	deployment := s.GetSliverDeployment(ctx, name)
+	if deployment != nil {
+		allocationStatus = constants.GeniStateProvisioned
+	}
+	arch, host, port := s.GetSliverArchHostPort(ctx, name)
+	if arch != nil && host != nil && port != nil {
+		operationalStatus = constants.GeniStateReady
+	}
+	return allocationStatus, operationalStatus
+}
+
 func (s Service) ListSlivers(
 	ctx context.Context,
 	identifier identifiers.Identifier,
@@ -111,7 +187,12 @@ func (s Service) AuthorizeAndListSlivers(
 		// This is mostly to be compatible with the spec. that expects an error on an
 		// un-existing slice (instead of a list of 0 slivers).
 		if identifier.ResourceType == identifiers.ResourceTypeSlice {
-			_, err := FindCredential(*userIdentifier, identifier, credentials, s.TrustedCertificates)
+			_, err := FindCredential(
+				*userIdentifier,
+				identifier,
+				credentials,
+				s.TrustedCertificates,
+			)
 			if err != nil {
 				return nil, err
 			}
@@ -193,12 +274,12 @@ type Options struct {
 	} `xml:"geni_users"`
 }
 
-func NewSliver(sliver v1.Sliver) Sliver {
+func NewSliver(sliver v1.Sliver, allocationStatus string, operationalStatus string) Sliver {
 	return Sliver{
 		URN:               sliver.Spec.URN,
 		Expires:           sliver.Spec.Expires.Format(time.RFC3339),
-		AllocationStatus:  sliver.Status.AllocationStatus,
-		OperationalStatus: sliver.Status.OperationalStatus,
+		AllocationStatus:  allocationStatus,
+		OperationalStatus: operationalStatus,
 	}
 }
 

@@ -7,21 +7,30 @@ const (
 )
 
 const (
+	EdgeNetLabelCountryISO = "edge-net.io/country-iso"
+	EdgeNetLabelLatitude   = "edge-net.io/lat"
+	EdgeNetLabelLongitude  = "edge-net.io/lon"
+)
+
+const (
 	HttpHeaderCertificate = "X-Fed4Fire-Certificate"
 	HttpHeaderUser        = "X-Fed4Fire-User"
 )
 
 // Error messages specific to this AM.
-// TODO: Replace all error messages with these constants.
 const (
-	ErrorBadCredentials = "Invalid credentials"
-	ErrorBadTime        = "Failed to parse time"
-	ErrorBadIdentifier  = "Failed to parse identifier"
-	ErrorBuildResources = "Failed to build resources"
-	ErrorDeleteResource = "Failed to delete resource"
-	ErrorGetResource    = "Failed to get resource"
-	ErrorListResources  = "Failed to list resources"
-	ErrorUpdateResource = "Failed to update resource"
+	ErrorBadAction        = "Unsupported action"
+	ErrorBadCredentials   = "Invalid credentials"
+	ErrorBadTime          = "Failed to parse time"
+	ErrorBadIdentifier    = "Failed to parse identifier"
+	ErrorBuildResources   = "Failed to build resources"
+	ErrorCreateResource   = "Failed to create resource"
+	ErrorDeleteResource   = "Failed to delete resource"
+	ErrorGetResource      = "Failed to get resource"
+	ErrorListResources    = "Failed to list resources"
+	ErrorUpdateResource   = "Failed to update resource"
+	ErrorSerializeRspec   = "Failed to serialize rspec"
+	ErrorDeserializeRspec = "Failed to deserialize rspec"
 )
 
 // Names for Kubernetes objects labels and annotations.

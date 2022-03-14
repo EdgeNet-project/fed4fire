@@ -95,19 +95,22 @@ func (s *Service) Provision(r *http.Request, args *ProvisionArgs, reply *Provisi
 				klog.InfoS("Failed to delete resources", "name", res.Deployment.Name)
 			}
 		}
-		return reply.SetAndLogError(createResourcesError, "Failed to create resources")
+		return reply.SetAndLogError(createResourcesError, constants.ErrorCreateResource)
 	}
 
 	returnRspec := rspec.Rspec{Type: rspec.RspecTypeManifest}
 
 	for _, sliver := range slivers {
-		sliver.Status.AllocationStatus = constants.GeniStateProvisioned
-		sliver.Status.OperationalStatus = constants.GeniStateReady
-		_, err := s.Slivers().UpdateStatus(r.Context(), &sliver, metav1.UpdateOptions{})
+
+		sliver, err := s.Slivers().Get(r.Context(), sliver.Name, metav1.GetOptions{})
 		if err != nil {
-			return reply.SetAndLogError(err, constants.ErrorUpdateResource)
+			return reply.SetAndLogError(err, constants.ErrorGetResource)
 		}
-		reply.Data.Value.Slivers = append(reply.Data.Value.Slivers, NewSliver(sliver))
+		allocationStatus, operationalStatus := s.GetSliverStatus(r.Context(), sliver.Name)
+		reply.Data.Value.Slivers = append(
+			reply.Data.Value.Slivers,
+			NewSliver(*sliver, allocationStatus, operationalStatus),
+		)
 		returnRspec.Nodes = append(returnRspec.Nodes, rspec.Node{
 			ComponentManagerID: s.AuthorityIdentifier.URN(),
 			Available:          rspec.Available{Now: false},
@@ -118,7 +121,7 @@ func (s *Service) Provision(r *http.Request, args *ProvisionArgs, reply *Provisi
 
 	xml_, err := xml.Marshal(returnRspec)
 	if err != nil {
-		return reply.SetAndLogError(err, "Failed to serialize response")
+		return reply.SetAndLogError(err, constants.ErrorSerializeRspec)
 	}
 	reply.Data.Value.Rspec = string(xml_)
 	reply.Data.Code.Code = constants.GeniCodeSuccess
@@ -140,6 +143,26 @@ func buildResources(
 	labels := map[string]string{
 		constants.Fed4FireSliceHash:  naming.SliceHash(sliver.Spec.SliceURN),
 		constants.Fed4FireSliverName: sliver.Name,
+	}
+
+	nodeSelectorRequirements := []corev1.NodeSelectorRequirement{{
+		Key:      corev1.LabelOSStable,
+		Operator: corev1.NodeSelectorOpIn,
+		Values:   []string{"linux"},
+	}}
+	if sliver.Spec.RequestedArch != nil {
+		nodeSelectorRequirements = append(nodeSelectorRequirements, corev1.NodeSelectorRequirement{
+			Key:      corev1.LabelArchStable,
+			Operator: corev1.NodeSelectorOpIn,
+			Values:   []string{*sliver.Spec.RequestedArch},
+		})
+	}
+	if sliver.Spec.RequestedNode != nil {
+		nodeSelectorRequirements = append(nodeSelectorRequirements, corev1.NodeSelectorRequirement{
+			Key:      corev1.LabelHostname,
+			Operator: corev1.NodeSelectorOpIn,
+			Values:   []string{*sliver.Spec.RequestedNode},
+		})
 	}
 
 	configMap := &corev1.ConfigMap{
@@ -169,6 +192,15 @@ func buildResources(
 					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
+					Affinity: &corev1.Affinity{
+						NodeAffinity: &corev1.NodeAffinity{
+							RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+								NodeSelectorTerms: []corev1.NodeSelectorTerm{{
+									MatchExpressions: nodeSelectorRequirements,
+								}},
+							},
+						},
+					},
 					Containers: []corev1.Container{
 						{
 							Name:  sliver.Name,
@@ -234,9 +266,6 @@ func buildResources(
 }
 
 func createResources(context context.Context, service Service, resources sliverResources) error {
-	// The sliver owns the deployment, the deployment own the config map and the service;
-	// this ensures that all the resources will be cleaned-up on sliver deletion and also
-	// allows to delete the deployment but keep the sliver resource as required by the AM interface.
 	sliver, err := service.Slivers().Get(context, resources.Deployment.Name, metav1.GetOptions{})
 	if err != nil {
 		return err
@@ -251,20 +280,9 @@ func createResources(context context.Context, service Service, resources sliverR
 		resources.Deployment.OwnerReferences,
 		ownerReference,
 	)
-	deployment, err := service.Deployments().
-		Create(context, resources.Deployment, metav1.CreateOptions{})
-	if err != nil && errors.IsAlreadyExists(err) {
-		deployment, err = service.Deployments().
-			Get(context, resources.Deployment.Name, metav1.GetOptions{})
-	}
-	if err != nil {
+	_, err = service.Deployments().Create(context, resources.Deployment, metav1.CreateOptions{})
+	if err != nil && !errors.IsAlreadyExists(err) {
 		return err
-	}
-	ownerReference = metav1.OwnerReference{
-		APIVersion: "apps/v1",
-		Kind:       "Deployment",
-		Name:       deployment.Name,
-		UID:        deployment.UID,
 	}
 	resources.ConfigMap.OwnerReferences = append(
 		resources.ConfigMap.OwnerReferences,

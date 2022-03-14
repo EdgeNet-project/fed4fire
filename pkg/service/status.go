@@ -48,10 +48,18 @@ func (s *Service) Status(r *http.Request, args *StatusArgs, reply *StatusReply) 
 	}
 
 	for _, sliver := range slivers {
+		allocationStatus, operationalStatus := s.GetSliverStatus(r.Context(), sliver.Name)
 		// The spec. says that all the requested slivers belong to the same slice,
 		// so it's safe to retrieve the slice URN from any sliver.
 		reply.Data.Value.URN = sliver.Spec.SliceURN
-		reply.Data.Value.Slivers = append(reply.Data.Value.Slivers, NewSliver(sliver))
+		reply.Data.Value.Slivers = append(
+			reply.Data.Value.Slivers,
+			NewSliver(sliver, allocationStatus, operationalStatus),
+		)
+	}
+
+	if reply.Data.Value.URN == "" && len(args.URNs) > 0 {
+		reply.Data.Value.URN = args.URNs[0]
 	}
 
 	reply.Data.Code.Code = constants.GeniCodeSuccess

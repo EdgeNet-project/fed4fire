@@ -22,9 +22,16 @@ This package implements the [GENI Aggregate Manager API Version 3](https://group
 </rspec>
 ```
 
-#### Multiple slivers with specific nodes and disk images
+#### Specific node and disk image
 
 ```xml
+<rspec type="request" xsi:schemaLocation="http://www.geni.net/resources/rspec/3 http://www.geni.net/resources/rspec/3/request.xsd " xmlns:client="http://www.protogeni.net/resources/rspec/ext/client/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.geni.net/resources/rspec/3">
+  <node client_id="PC" component_id="urn:publicid:IDN+edge-net.org+node+geni-us-tn-cb07.edge-net.io" component_manager_id="urn:publicid:IDN+edge-net.org+authority+am"  exclusive="false">
+      <sliver_type name="container">
+          <disk_image name="urn:publicid:IDN+edge-net.org+image+ubuntu2004"/>
+      </sliver_type>
+  </node>
+</rspec>
 ```
 
 ## Architecture

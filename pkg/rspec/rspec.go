@@ -27,7 +27,7 @@ type Node struct {
 	SliverID           string       `xml:"sliver_id,attr,omitempty"`
 	Exclusive          bool         `xml:"exclusive,attr"`
 	HardwareType       HardwareType `xml:"hardware_type"`
-	SliverTypes        []SliverType `xml:"sliver_type"`
+	SliverType         SliverType   `xml:"sliver_type"`
 	Services           Services     `xml:"services"`
 	Available          Available    `xml:"available"`
 	Location           Location     `xml:"location"`

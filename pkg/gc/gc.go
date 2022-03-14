@@ -1,6 +1,9 @@
 package gc
 
 import (
+	"context"
+	"github.com/EdgeNet-project/fed4fire/pkg/generated/clientset/versioned"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"time"
 
 	"k8s.io/client-go/kubernetes"
@@ -8,45 +11,50 @@ import (
 )
 
 type GC struct {
-	Client    kubernetes.Interface
-	Interval  time.Duration
-	Namespace string
+	Fed4FireClient   versioned.Interface
+	KubernetesClient kubernetes.Interface
+	Interval         time.Duration
+	Timeout          time.Duration
+	Namespace        string
 }
 
-func (gc GC) Start() {
-	go gc.loop()
-	klog.InfoS("Started garbage collector")
+func (w GC) Start() {
+	go w.loop()
+	klog.InfoS("Started collector")
 }
 
-func (gc GC) loop() {
-	for range time.Tick(gc.Interval) {
-		gc.collect()
+func (w GC) loop() {
+	w.collect() // Run instantly on start.
+	for range time.Tick(w.Interval) {
+		w.collect()
 	}
 }
 
-func (gc GC) collect() {
-	//client := gc.Client.AppsV1().Deployments(gc.Namespace)
-	//ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
-	//defer cancel()
-	//deployments, err := client.List(ctx, metav1.ListOptions{})
-	//if err != nil {
-	//	klog.ErrorS(err, "Failed to list deployments")
-	//}
-	//// TODO: Update this code to use the sliver expiry time instead.
-	//// TODO: Update sliver state.
-	//for _, deployment := range deployments.Items {
-	//	expirationTimeStr := deployment.Annotations[constants.Fed4FireExpires]
-	//	expirationTime, err := time.Parse(time.RFC3339, expirationTimeStr)
-	//	if err != nil {
-	//		klog.ErrorS(err, "Failed to parse expiration time", "value", expirationTimeStr)
-	//	}
-	//	if expirationTime.Before(time.Now()) {
-	//		err := client.Delete(ctx, deployment.Name, metav1.DeleteOptions{})
-	//		if err == nil {
-	//			klog.InfoS("Deleted deployment", "name", deployment.Name)
-	//		} else {
-	//			klog.ErrorS(err, "Failed to delete deployment", "name", deployment.Name)
-	//		}
-	//	}
-	//}
+func (w GC) collect() {
+	sliversClient := w.Fed4FireClient.Fed4fireV1().Slivers(w.Namespace)
+	deploymentsClient := w.KubernetesClient.AppsV1().Deployments(w.Namespace)
+
+	ctx, cancel := context.WithTimeout(context.Background(), w.Timeout)
+	defer cancel()
+
+	slivers, err := sliversClient.List(ctx, metav1.ListOptions{})
+	if err != nil {
+		klog.ErrorS(err, "Failed to list slivers")
+	}
+
+	for _, sliver := range slivers.Items {
+		if time.Now().After(sliver.Spec.Expires.Time) {
+			deployment, err := deploymentsClient.Get(ctx, sliver.Name, metav1.GetOptions{})
+			if err != nil {
+				klog.ErrorS(err, "Failed to get deployment")
+				continue
+			}
+			err = deploymentsClient.Delete(ctx, deployment.Name, metav1.DeleteOptions{})
+			if err != nil {
+				klog.ErrorS(err, "Failed to delete deployment")
+				continue
+			}
+			klog.InfoS("Deleted expired deployment", "sliver", sliver.Name)
+		}
+	}
 }

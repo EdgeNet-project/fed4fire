@@ -49,17 +49,15 @@ func (s *Service) Delete(r *http.Request, args *DeleteArgs, reply *DeleteReply) 
 	}
 
 	for _, sliver := range slivers {
-		err := s.Deployments().Delete(r.Context(), sliver.Name, metav1.DeleteOptions{})
+		err := s.Slivers().Delete(r.Context(), sliver.Name, metav1.DeleteOptions{})
 		if err != nil {
 			return reply.SetAndLogError(err, constants.ErrorDeleteResource)
 		}
-		sliver.Status.AllocationStatus = constants.GeniStateUnallocated
-		sliver.Status.OperationalStatus = constants.GeniStateNotReady
-		_, err = s.Slivers().UpdateStatus(r.Context(), &sliver, metav1.UpdateOptions{})
-		if err != nil {
-			return reply.SetAndLogError(err, constants.ErrorUpdateResource)
-		}
-		reply.Data.Value = append(reply.Data.Value, NewSliver(sliver))
+		allocationStatus, operationalStatus := s.GetSliverStatus(r.Context(), sliver.Name)
+		reply.Data.Value = append(
+			reply.Data.Value,
+			NewSliver(sliver, allocationStatus, operationalStatus),
+		)
 	}
 
 	reply.Data.Code.Code = constants.GeniCodeSuccess

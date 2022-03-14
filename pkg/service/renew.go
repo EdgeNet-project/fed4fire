@@ -55,6 +55,7 @@ func (s *Service) Renew(r *http.Request, args *RenewArgs, reply *RenewReply) err
 	}
 
 	for _, sliver := range slivers {
+		allocationStatus, operationalStatus := s.GetSliverStatus(r.Context(), sliver.Name)
 		if time.Now().After(sliver.Spec.Expires.Time) {
 			return reply.SetAndLogError(
 				fmt.Errorf("sliver has expired"),
@@ -66,7 +67,10 @@ func (s *Service) Renew(r *http.Request, args *RenewArgs, reply *RenewReply) err
 		if err != nil {
 			return reply.SetAndLogError(err, constants.ErrorUpdateResource)
 		}
-		reply.Data.Value = append(reply.Data.Value, NewSliver(*sliver))
+		reply.Data.Value = append(
+			reply.Data.Value,
+			NewSliver(*sliver, allocationStatus, operationalStatus),
+		)
 	}
 
 	reply.Data.Code.Code = constants.GeniCodeSuccess

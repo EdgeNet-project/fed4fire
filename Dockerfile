@@ -20,9 +20,9 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # Add kubectl and kubelogin for development with local OIDC kubeconfig file.
-RUN curl -L "https://dl.k8s.io/release/v1.21.5/bin/linux/$(arch | sed -e "s/aarch64/arm64/")/kubectl" > /usr/bin/kubectl && \
+RUN curl -L "https://dl.k8s.io/release/v1.21.5/bin/linux/$(arch | sed -e "s/aarch64/arm64/;s/x86_64/amd64/")/kubectl" > /usr/bin/kubectl && \
     chmod +x /usr/bin/kubectl
-RUN curl -L "https://github.com/int128/kubelogin/releases/download/v1.25.1/kubelogin_linux_$(arch | sed -e "s/aarch64/arm64/").zip" > kubelogin.zip && \
+RUN curl -L "https://github.com/int128/kubelogin/releases/download/v1.25.1/kubelogin_linux_$(arch | sed -e "s/aarch64/arm64/;s/x86_64/amd64/").zip" > kubelogin.zip && \
     unzip kubelogin.zip && \
     rm kubelogin.zip && \
     mv kubelogin /usr/bin/kubectl-oidc_login

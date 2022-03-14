@@ -52,13 +52,20 @@ func (s *Service) PerformOperationalAction(
 	}
 
 	if args.Action != "geni_start" {
-		return reply.SetAndLogError(fmt.Errorf("action must be geni_start"), "Unsupported action")
+		return reply.SetAndLogError(
+			fmt.Errorf("action must be geni_start"),
+			constants.ErrorBadAction,
+		)
 	}
 
 	// Do nothing, `geni_start` is a no-op for us.
 
 	for _, sliver := range slivers {
-		reply.Data.Value = append(reply.Data.Value, NewSliver(sliver))
+		allocationStatus, operationalStatus := s.GetSliverStatus(r.Context(), sliver.Name)
+		reply.Data.Value = append(
+			reply.Data.Value,
+			NewSliver(sliver, allocationStatus, operationalStatus),
+		)
 	}
 	reply.Data.Code.Code = constants.GeniCodeSuccess
 	return nil

@@ -15,7 +15,6 @@ import (
 )
 
 func TestSignVerify(t *testing.T) {
-	// TODO: Cleanup this test.
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	utils.Check(err)
 	template := x509.Certificate{
