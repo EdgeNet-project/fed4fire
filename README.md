@@ -12,6 +12,22 @@ This package implements the [GENI Aggregate Manager API Version 3](https://group
 - EdgeNet defines one non-exclusive sliver type named `container` and one disk image named `ubuntu2004`
 - The SSH key must be set through the `geni_update_users` operational action
 
+### Example RSpecs
+
+#### Minimal
+
+```xml
+<rspec type="request" xsi:schemaLocation="http://www.geni.net/resources/rspec/3 http://www.geni.net/resources/rspec/3/request.xsd " xmlns:client="http://www.protogeni.net/resources/rspec/ext/client/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.geni.net/resources/rspec/3">
+  <node client_id="PC" component_manager_id="urn:publicid:IDN+edge-net.org+authority+am"  exclusive="false">
+  </node>
+</rspec>
+```
+
+#### Multiple slivers with specific nodes and disk images
+
+```xml
+```
+
 ## Architecture
 
 - The AM server is stateless, all the information about slices and slivers is stored in Kubernetes objects annotations

@@ -45,6 +45,7 @@ func (v *ProvisionReply) SetAndLogError(err error, msg string, keysAndValues ...
 	return nil
 }
 
+// TODO: Move to proper file.
 func FindCredentialForSliver(
 	userIdentifier identifiers.Identifier,
 	sliver v1.Sliver,
