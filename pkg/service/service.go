@@ -141,14 +141,14 @@ func (s Service) GetSliverStatus(ctx context.Context, name string) (string, stri
 	sliver := s.GetSliver(ctx, name)
 	if sliver != nil {
 		allocationStatus = constants.GeniStateAllocated
-	}
-	deployment := s.GetSliverDeployment(ctx, name)
-	if deployment != nil {
-		allocationStatus = constants.GeniStateProvisioned
-	}
-	arch, host, port := s.GetSliverArchHostPort(ctx, name)
-	if arch != nil && host != nil && port != nil {
-		operationalStatus = constants.GeniStateReady
+		deployment := s.GetSliverDeployment(ctx, name)
+		if deployment != nil {
+			allocationStatus = constants.GeniStateProvisioned
+		}
+		arch, host, port := s.GetSliverArchHostPort(ctx, name)
+		if arch != nil && host != nil && port != nil {
+			operationalStatus = constants.GeniStateReady
+		}
 	}
 	return allocationStatus, operationalStatus
 }

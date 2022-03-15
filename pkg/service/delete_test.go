@@ -20,6 +20,8 @@ func TestDelete_Slice(t *testing.T) {
 	err := s.Delete(r, args, reply)
 	assert.Nil(t, err)
 	assert.Equal(t, constants.GeniCodeSuccess, reply.Data.Code.Code)
+	assert.Equal(t, constants.GeniStateUnallocated, reply.Data.Value[0].AllocationStatus)
+	assert.Equal(t, constants.GeniStateNotReady, reply.Data.Value[0].OperationalStatus)
 	slivers := listTestSlivers(s)
 	assert.Len(t, slivers, 0)
 }

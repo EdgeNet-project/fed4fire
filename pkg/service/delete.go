@@ -2,9 +2,8 @@ package service
 
 import (
 	"fmt"
-	"net/http"
-
 	"github.com/EdgeNet-project/fed4fire/pkg/constants"
+	"net/http"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
