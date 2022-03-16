@@ -41,11 +41,22 @@ type SliverInterface interface {
 	Create(ctx context.Context, sliver *v1.Sliver, opts metav1.CreateOptions) (*v1.Sliver, error)
 	Update(ctx context.Context, sliver *v1.Sliver, opts metav1.UpdateOptions) (*v1.Sliver, error)
 	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
-	DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
+	DeleteCollection(
+		ctx context.Context,
+		opts metav1.DeleteOptions,
+		listOpts metav1.ListOptions,
+	) error
 	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.Sliver, error)
 	List(ctx context.Context, opts metav1.ListOptions) (*v1.SliverList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.Sliver, err error)
+	Patch(
+		ctx context.Context,
+		name string,
+		pt types.PatchType,
+		data []byte,
+		opts metav1.PatchOptions,
+		subresources ...string,
+	) (result *v1.Sliver, err error)
 	SliverExpansion
 }
 
@@ -64,7 +75,11 @@ func newSlivers(c *Fed4fireV1Client, namespace string) *slivers {
 }
 
 // Get takes name of the sliver, and returns the corresponding sliver object, and an error if there is any.
-func (c *slivers) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1.Sliver, err error) {
+func (c *slivers) Get(
+	ctx context.Context,
+	name string,
+	options metav1.GetOptions,
+) (result *v1.Sliver, err error) {
 	result = &v1.Sliver{}
 	err = c.client.Get().
 		Namespace(c.ns).
@@ -77,7 +92,10 @@ func (c *slivers) Get(ctx context.Context, name string, options metav1.GetOption
 }
 
 // List takes label and field selectors, and returns the list of Slivers that match those selectors.
-func (c *slivers) List(ctx context.Context, opts metav1.ListOptions) (result *v1.SliverList, err error) {
+func (c *slivers) List(
+	ctx context.Context,
+	opts metav1.ListOptions,
+) (result *v1.SliverList, err error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -109,7 +127,11 @@ func (c *slivers) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Int
 }
 
 // Create takes the representation of a sliver and creates it.  Returns the server's representation of the sliver, and an error, if there is any.
-func (c *slivers) Create(ctx context.Context, sliver *v1.Sliver, opts metav1.CreateOptions) (result *v1.Sliver, err error) {
+func (c *slivers) Create(
+	ctx context.Context,
+	sliver *v1.Sliver,
+	opts metav1.CreateOptions,
+) (result *v1.Sliver, err error) {
 	result = &v1.Sliver{}
 	err = c.client.Post().
 		Namespace(c.ns).
@@ -122,7 +144,11 @@ func (c *slivers) Create(ctx context.Context, sliver *v1.Sliver, opts metav1.Cre
 }
 
 // Update takes the representation of a sliver and updates it. Returns the server's representation of the sliver, and an error, if there is any.
-func (c *slivers) Update(ctx context.Context, sliver *v1.Sliver, opts metav1.UpdateOptions) (result *v1.Sliver, err error) {
+func (c *slivers) Update(
+	ctx context.Context,
+	sliver *v1.Sliver,
+	opts metav1.UpdateOptions,
+) (result *v1.Sliver, err error) {
 	result = &v1.Sliver{}
 	err = c.client.Put().
 		Namespace(c.ns).
@@ -147,7 +173,11 @@ func (c *slivers) Delete(ctx context.Context, name string, opts metav1.DeleteOpt
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *slivers) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
+func (c *slivers) DeleteCollection(
+	ctx context.Context,
+	opts metav1.DeleteOptions,
+	listOpts metav1.ListOptions,
+) error {
 	var timeout time.Duration
 	if listOpts.TimeoutSeconds != nil {
 		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
@@ -163,7 +193,14 @@ func (c *slivers) DeleteCollection(ctx context.Context, opts metav1.DeleteOption
 }
 
 // Patch applies the patch and returns the patched sliver.
-func (c *slivers) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.Sliver, err error) {
+func (c *slivers) Patch(
+	ctx context.Context,
+	name string,
+	pt types.PatchType,
+	data []byte,
+	opts metav1.PatchOptions,
+	subresources ...string,
+) (result *v1.Sliver, err error) {
 	result = &v1.Sliver{}
 	err = c.client.Patch(pt).
 		Namespace(c.ns).

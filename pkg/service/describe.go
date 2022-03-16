@@ -37,12 +37,7 @@ func (v *DescribeReply) SetAndLogError(err error, msg string, keysAndValues ...i
 // e.g. a single slice or a set of the slivers in a slice.
 // This listing and description should be sufficiently descriptive to allow experimenters to use the resources.
 func (s *Service) Describe(r *http.Request, args *DescribeArgs, reply *DescribeReply) error {
-	slivers, err := s.AuthorizeAndListSlivers(
-		r.Context(),
-		r.Header.Get(constants.HttpHeaderUser),
-		args.URNs,
-		args.Credentials,
-	)
+	slivers, err := s.AuthorizeAndListSlivers(r, args.URNs, args.Credentials)
 	if err != nil {
 		return reply.SetAndLogError(err, constants.ErrorListResources)
 	}

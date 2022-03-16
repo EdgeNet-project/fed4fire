@@ -41,12 +41,7 @@ func (s *Service) PerformOperationalAction(
 	args *PerformOperationalActionArgs,
 	reply *PerformOperationalActionReply,
 ) error {
-	slivers, err := s.AuthorizeAndListSlivers(
-		r.Context(),
-		r.Header.Get(constants.HttpHeaderUser),
-		args.URNs,
-		args.Credentials,
-	)
+	slivers, err := s.AuthorizeAndListSlivers(r, args.URNs, args.Credentials)
 	if err != nil {
 		return reply.SetAndLogError(err, constants.ErrorListResources)
 	}

@@ -18,17 +18,16 @@ type DeleteArgs struct {
 
 type DeleteReply struct {
 	Data struct {
-		Code  Code     `xml:"code"`
-		Value []Sliver `xml:"value"`
+		Code   Code     `xml:"code"`
+		Output string   `xml:"output"`
+		Value  []Sliver `xml:"value"`
 	}
 }
 
 func (v *DeleteReply) SetAndLogError(err error, msg string, keysAndValues ...interface{}) error {
 	klog.ErrorSDepth(1, err, msg, keysAndValues)
 	v.Data.Code.Code = constants.GeniCodeError
-	v.Data.Value = []Sliver{{
-		Error: fmt.Sprintf("%s: %s", msg, err),
-	}}
+	v.Data.Output = fmt.Sprintf("%s: %s", msg, err)
 	return nil
 }
 
@@ -37,12 +36,7 @@ func (v *DeleteReply) SetAndLogError(err error, msg string, keysAndValues ...int
 // No further AM API operations may be performed on slivers that have been deleted.
 // https://groups.geni.net/geni/wiki/GAPI_AM_API_V3#Delete
 func (s *Service) Delete(r *http.Request, args *DeleteArgs, reply *DeleteReply) error {
-	slivers, err := s.AuthorizeAndListSlivers(
-		r.Context(),
-		r.Header.Get(constants.HttpHeaderUser),
-		args.URNs,
-		args.Credentials,
-	)
+	slivers, err := s.AuthorizeAndListSlivers(r, args.URNs, args.Credentials)
 	if err != nil {
 		return reply.SetAndLogError(err, constants.ErrorListResources)
 	}

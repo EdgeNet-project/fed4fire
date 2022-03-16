@@ -36,12 +36,24 @@ type FakeSlivers struct {
 	ns   string
 }
 
-var sliversResource = schema.GroupVersionResource{Group: "fed4fire.edgenet.io", Version: "v1", Resource: "slivers"}
+var sliversResource = schema.GroupVersionResource{
+	Group:    "fed4fire.edgenet.io",
+	Version:  "v1",
+	Resource: "slivers",
+}
 
-var sliversKind = schema.GroupVersionKind{Group: "fed4fire.edgenet.io", Version: "v1", Kind: "Sliver"}
+var sliversKind = schema.GroupVersionKind{
+	Group:   "fed4fire.edgenet.io",
+	Version: "v1",
+	Kind:    "Sliver",
+}
 
 // Get takes name of the sliver, and returns the corresponding sliver object, and an error if there is any.
-func (c *FakeSlivers) Get(ctx context.Context, name string, options v1.GetOptions) (result *fed4firev1.Sliver, err error) {
+func (c *FakeSlivers) Get(
+	ctx context.Context,
+	name string,
+	options v1.GetOptions,
+) (result *fed4firev1.Sliver, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewGetAction(sliversResource, c.ns, name), &fed4firev1.Sliver{})
 
@@ -52,9 +64,15 @@ func (c *FakeSlivers) Get(ctx context.Context, name string, options v1.GetOption
 }
 
 // List takes label and field selectors, and returns the list of Slivers that match those selectors.
-func (c *FakeSlivers) List(ctx context.Context, opts v1.ListOptions) (result *fed4firev1.SliverList, err error) {
+func (c *FakeSlivers) List(
+	ctx context.Context,
+	opts v1.ListOptions,
+) (result *fed4firev1.SliverList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(sliversResource, sliversKind, c.ns, opts), &fed4firev1.SliverList{})
+		Invokes(
+			testing.NewListAction(sliversResource, sliversKind, c.ns, opts),
+			&fed4firev1.SliverList{},
+		)
 
 	if obj == nil {
 		return nil, err
@@ -81,7 +99,11 @@ func (c *FakeSlivers) Watch(ctx context.Context, opts v1.ListOptions) (watch.Int
 }
 
 // Create takes the representation of a sliver and creates it.  Returns the server's representation of the sliver, and an error, if there is any.
-func (c *FakeSlivers) Create(ctx context.Context, sliver *fed4firev1.Sliver, opts v1.CreateOptions) (result *fed4firev1.Sliver, err error) {
+func (c *FakeSlivers) Create(
+	ctx context.Context,
+	sliver *fed4firev1.Sliver,
+	opts v1.CreateOptions,
+) (result *fed4firev1.Sliver, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewCreateAction(sliversResource, c.ns, sliver), &fed4firev1.Sliver{})
 
@@ -92,7 +114,11 @@ func (c *FakeSlivers) Create(ctx context.Context, sliver *fed4firev1.Sliver, opt
 }
 
 // Update takes the representation of a sliver and updates it. Returns the server's representation of the sliver, and an error, if there is any.
-func (c *FakeSlivers) Update(ctx context.Context, sliver *fed4firev1.Sliver, opts v1.UpdateOptions) (result *fed4firev1.Sliver, err error) {
+func (c *FakeSlivers) Update(
+	ctx context.Context,
+	sliver *fed4firev1.Sliver,
+	opts v1.UpdateOptions,
+) (result *fed4firev1.Sliver, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewUpdateAction(sliversResource, c.ns, sliver), &fed4firev1.Sliver{})
 
@@ -111,7 +137,11 @@ func (c *FakeSlivers) Delete(ctx context.Context, name string, opts v1.DeleteOpt
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *FakeSlivers) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+func (c *FakeSlivers) DeleteCollection(
+	ctx context.Context,
+	opts v1.DeleteOptions,
+	listOpts v1.ListOptions,
+) error {
 	action := testing.NewDeleteCollectionAction(sliversResource, c.ns, listOpts)
 
 	_, err := c.Fake.Invokes(action, &fed4firev1.SliverList{})
@@ -119,9 +149,25 @@ func (c *FakeSlivers) DeleteCollection(ctx context.Context, opts v1.DeleteOption
 }
 
 // Patch applies the patch and returns the patched sliver.
-func (c *FakeSlivers) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *fed4firev1.Sliver, err error) {
+func (c *FakeSlivers) Patch(
+	ctx context.Context,
+	name string,
+	pt types.PatchType,
+	data []byte,
+	opts v1.PatchOptions,
+	subresources ...string,
+) (result *fed4firev1.Sliver, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(sliversResource, c.ns, name, pt, data, subresources...), &fed4firev1.Sliver{})
+		Invokes(
+			testing.NewPatchSubresourceAction(
+				sliversResource,
+				c.ns,
+				name,
+				pt,
+				data,
+				subresources...),
+			&fed4firev1.Sliver{},
+		)
 
 	if obj == nil {
 		return nil, err

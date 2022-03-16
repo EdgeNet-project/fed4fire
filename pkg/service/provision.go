@@ -47,12 +47,7 @@ func (v *ProvisionReply) SetAndLogError(err error, msg string, keysAndValues ...
 // and may be made geni_ready for experimenter use.
 // https://groups.geni.net/geni/wiki/GAPI_AM_API_V3#Provision
 func (s *Service) Provision(r *http.Request, args *ProvisionArgs, reply *ProvisionReply) error {
-	slivers, err := s.AuthorizeAndListSlivers(
-		r.Context(),
-		r.Header.Get(constants.HttpHeaderUser),
-		args.URNs,
-		args.Credentials,
-	)
+	slivers, err := s.AuthorizeAndListSlivers(r, args.URNs, args.Credentials)
 	if err != nil {
 		return reply.SetAndLogError(err, constants.ErrorListResources)
 	}

@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/pointer"
+	"net/http"
 	"time"
 
 	"github.com/EdgeNet-project/fed4fire/pkg/constants"
@@ -180,11 +181,11 @@ func (s Service) ListSlivers(
 }
 
 func (s Service) AuthorizeAndListSlivers(
-	ctx context.Context,
-	userIdentifierStr string,
+	r *http.Request,
 	resourceIdentifiersStr []string,
 	credentials []Credential,
 ) ([]v1.Sliver, error) {
+	userIdentifierStr := r.Header.Get(constants.HttpHeaderUser)
 	userIdentifier, err := identifiers.Parse(userIdentifierStr)
 	if err != nil {
 		return nil, err
@@ -209,7 +210,7 @@ func (s Service) AuthorizeAndListSlivers(
 				return nil, err
 			}
 		}
-		slivers_, err := s.ListSlivers(ctx, *identifier)
+		slivers_, err := s.ListSlivers(r.Context(), *identifier)
 		if err != nil {
 			return nil, err
 		}

@@ -37,12 +37,7 @@ func (v *StatusReply) SetAndLogError(err error, msg string, keysAndValues ...int
 // which began to asynchronously provision the resources. This should be relatively dynamic data,
 // not descriptive data as returned in the manifest RSpec.
 func (s *Service) Status(r *http.Request, args *StatusArgs, reply *StatusReply) error {
-	slivers, err := s.AuthorizeAndListSlivers(
-		r.Context(),
-		r.Header.Get(constants.HttpHeaderUser),
-		args.URNs,
-		args.Credentials,
-	)
+	slivers, err := s.AuthorizeAndListSlivers(r, args.URNs, args.Credentials)
 	if err != nil {
 		return reply.SetAndLogError(err, constants.ErrorListResources)
 	}

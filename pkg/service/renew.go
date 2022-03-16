@@ -39,12 +39,7 @@ func (v *RenewReply) SetAndLogError(err error, msg string, keysAndValues ...inte
 // though different policies may apply to slivers in the different states,
 // resulting in much shorter max expiration times for geni_allocated slivers.
 func (s *Service) Renew(r *http.Request, args *RenewArgs, reply *RenewReply) error {
-	slivers, err := s.AuthorizeAndListSlivers(
-		r.Context(),
-		r.Header.Get(constants.HttpHeaderUser),
-		args.URNs,
-		args.Credentials,
-	)
+	slivers, err := s.AuthorizeAndListSlivers(r, args.URNs, args.Credentials)
 	if err != nil {
 		return reply.SetAndLogError(err, constants.ErrorListResources)
 	}
