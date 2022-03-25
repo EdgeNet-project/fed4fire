@@ -19,7 +19,7 @@ services:
       - -containerImage=ubuntu2004:docker.io/maxmouchet/openssh-server:v1
       - -kubeconfig=/root/.kube/config
       - -namespace=fed4fire-dev
-      - -serverAddr=0.0.0.0:9443
+      - -listenAddr=0.0.0.0:9443
       - -trustedCert=/trusted_roots/ilabt.imec.be.pem
     entrypoint: /dlv
     ports:

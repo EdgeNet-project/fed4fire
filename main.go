@@ -6,7 +6,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"github.com/EdgeNet-project/fed4fire/pkg/constants"
 	"github.com/EdgeNet-project/fed4fire/pkg/gc"
 	versioned "github.com/EdgeNet-project/fed4fire/pkg/generated/clientset/versioned"
@@ -26,13 +25,14 @@ import (
 )
 
 var showHelp bool
+var absoluteUrl string
 var authorityName string
 var containerImages utils.ArrayFlags
 var containerCpuLimit string
 var containerMemoryLimit string
 var kubeconfigFile string
+var listenAddr string
 var namespace string
-var serverAddr string
 var trustedCerts utils.ArrayFlags
 
 func beforeFunc(i *rpc.RequestInfo) {
@@ -53,13 +53,14 @@ func beforeFunc(i *rpc.RequestInfo) {
 func main() {
 	klog.InitFlags(nil)
 	flag.BoolVar(&showHelp, "help", false, "show this message")
+	flag.StringVar(&absoluteUrl, "absoluteUrl", "https://localhost:9443", "URL used by external clients to reach this server")
 	flag.StringVar(&authorityName, "authorityName", "example.org", "authority name to use in URNs")
 	flag.Var(&containerImages, "containerImage", "name:image of a container image that can be deployed; can be specified multiple times")
 	flag.StringVar(&containerCpuLimit, "containerCpuLimit", "2", "maximum amount of CPU that can be used by a container")
 	flag.StringVar(&containerMemoryLimit, "containerMemoryLimit", "2Gi", "maximum amount of memory that can be used by a container")
 	flag.StringVar(&kubeconfigFile, "kubeconfig", "", "path to the kubeconfig file used to communicate with the Kubernetes API")
+	flag.StringVar(&listenAddr, "listenAddr", "localhost:9443", "host:port on which to listen")
 	flag.StringVar(&namespace, "namespace", "", "kubernetes namespaces in which to create resources")
-	flag.StringVar(&serverAddr, "serverAddr", "localhost:9443", "host:port on which to listen")
 	flag.Var(&trustedCerts, "trustedCert", "path to a trusted certificate for authenticating users; can be specified multiple times")
 	flag.Parse()
 
@@ -98,9 +99,7 @@ func main() {
 	}
 
 	s := &service.Service{
-		// TODO: This is invalid with the reverse proxy, add absoluteUrl param?
-		// and rename serverAddr to listenAddr?
-		AbsoluteURL:          fmt.Sprintf("https://%s", serverAddr),
+		AbsoluteURL:          absoluteUrl,
 		AuthorityIdentifier:  authorityIdentifier,
 		ContainerImages:      containerImages_,
 		ContainerCpuLimit:    containerCpuLimit,
@@ -127,6 +126,6 @@ func main() {
 		Namespace:        namespace,
 	}.Start()
 
-	klog.InfoS("Listening", "address", serverAddr)
-	utils.Check(http.ListenAndServe(serverAddr, RPC))
+	klog.InfoS("Listening", "address", listenAddr)
+	utils.Check(http.ListenAndServe(listenAddr, RPC))
 }
