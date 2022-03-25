@@ -10,6 +10,7 @@ This package implements the [GENI Aggregate Manager API Version 3](https://group
 
 - To run experiments on a Fed4FIRE testbed, follow the instructions at https://doc.fed4fire.eu.
 - EdgeNet defines one non-exclusive sliver type named `container` and one disk image named `ubuntu2004`.
+- View the testbed status on [FedMon](https://fedmon.fed4fire.eu/testbed/edgenet).
 
 ### Example RSpecs
 
