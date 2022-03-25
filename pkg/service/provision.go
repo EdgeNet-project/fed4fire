@@ -16,6 +16,7 @@ import (
 	"k8s.io/utils/pointer"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type ProvisionArgs struct {
@@ -96,6 +97,12 @@ func (s *Service) Provision(r *http.Request, args *ProvisionArgs, reply *Provisi
 		sliver, err := s.Slivers().Get(r.Context(), sliver.Name, metav1.GetOptions{})
 		if err != nil {
 			return reply.SetAndLogError(err, constants.ErrorGetResource)
+		}
+		// Update the sliver expiration time if geni_end_time is specified.
+		expirationTime, err := time.Parse(time.RFC3339, args.Options.EndTime)
+		if err == nil {
+			sliver.Spec.Expires.Time = expirationTime
+			sliver, err = s.Slivers().Update(r.Context(), sliver, metav1.UpdateOptions{})
 		}
 		allocationStatus, operationalStatus := s.GetSliverStatus(r.Context(), sliver.Name)
 		reply.Data.Value.Slivers = append(
