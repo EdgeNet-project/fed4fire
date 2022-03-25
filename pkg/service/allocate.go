@@ -79,6 +79,7 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 		sliverName := naming.SliverName(sliceIdentifier.URN(), node.ClientID)
 		// Fixup the sliver type if not specified.
 		node.SliverType.Name = "container"
+		node.Location = nil
 		// We're very lenient here: if there is no image specified, or
 		// if a disk image is specified but does not exist, we use a default one.
 		diskImage := s.ContainerImages[utils.Keys(s.ContainerImages)[0]]
