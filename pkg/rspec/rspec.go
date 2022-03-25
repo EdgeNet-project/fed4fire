@@ -19,18 +19,18 @@ type Rspec struct {
 }
 
 type Node struct {
-	XMLName            xml.Name     `xml:"node"`
-	ClientID           string       `xml:"client_id,attr,omitempty"`
-	ComponentID        string       `xml:"component_id,attr,omitempty"`
-	ComponentManagerID string       `xml:"component_manager_id,attr,omitempty"`
-	ComponentName      string       `xml:"component_name,attr,omitempty"`
-	SliverID           string       `xml:"sliver_id,attr,omitempty"`
-	Exclusive          bool         `xml:"exclusive,attr"`
-	HardwareType       HardwareType `xml:"hardware_type"`
-	SliverType         SliverType   `xml:"sliver_type"`
-	Services           Services     `xml:"services"`
-	Available          Available    `xml:"available"`
-	Location           Location     `xml:"location"`
+	XMLName            xml.Name      `xml:"node"`
+	ClientID           string        `xml:"client_id,attr,omitempty"`
+	ComponentID        string        `xml:"component_id,attr,omitempty"`
+	ComponentManagerID string        `xml:"component_manager_id,attr,omitempty"`
+	ComponentName      string        `xml:"component_name,attr,omitempty"`
+	SliverID           string        `xml:"sliver_id,attr,omitempty"`
+	Exclusive          bool          `xml:"exclusive,attr"`
+	HardwareType       *HardwareType `xml:"hardware_type,omitempty"`
+	SliverType         SliverType    `xml:"sliver_type"`
+	Services           *Services     `xml:"services,omitempty"`
+	Available          *Available    `xml:"available,omitempty"`
+	Location           *Location     `xml:"location,omitempty"`
 }
 
 type DiskImage struct {
@@ -40,7 +40,7 @@ type DiskImage struct {
 
 type HardwareType struct {
 	XMLName xml.Name `xml:"hardware_type"`
-	Name    string   `xml:"name"`
+	Name    string   `xml:"name,attr"`
 }
 
 type SliverType struct {

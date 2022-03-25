@@ -75,8 +75,10 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 
 	returnRspec := rspec.Rspec{Type: rspec.RspecTypeRequest}
 
-	for i, node := range requestRspec.Nodes {
+	for _, node := range requestRspec.Nodes {
 		sliverName := naming.SliverName(sliceIdentifier.URN(), node.ClientID)
+		// Fixup the sliver type if not specified.
+		node.SliverType.Name = "container"
 		// We're very lenient here: if there is no image specified, or
 		// if a disk image is specified but does not exist, we use a default one.
 		diskImage := s.ContainerImages[utils.Keys(s.ContainerImages)[0]]
@@ -86,7 +88,7 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 			}
 		}
 		var requestedArch *string
-		if node.HardwareType.Name != "" {
+		if node.HardwareType != nil {
 			requestedArch = &node.HardwareType.Name
 		}
 		var requestedNode *string
@@ -136,7 +138,7 @@ func (s *Service) Allocate(r *http.Request, args *AllocateArgs, reply *AllocateR
 			reply.Data.Value.Slivers,
 			NewSliver(*sliver, allocationStatus, operationalStatus),
 		)
-		returnRspec.Nodes = append(returnRspec.Nodes, requestRspec.Nodes[i])
+		returnRspec.Nodes = append(returnRspec.Nodes, node)
 	}
 
 	xml_, err := MarshalRspec(returnRspec, args.Options.Compressed)

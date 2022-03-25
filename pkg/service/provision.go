@@ -104,9 +104,12 @@ func (s *Service) Provision(r *http.Request, args *ProvisionArgs, reply *Provisi
 		)
 		returnRspec.Nodes = append(returnRspec.Nodes, rspec.Node{
 			ComponentManagerID: s.AuthorityIdentifier.URN(),
-			Available:          rspec.Available{Now: false},
+			Available:          &rspec.Available{Now: false},
 			ClientID:           sliver.Spec.ClientID,
 			Exclusive:          false,
+			SliverType: rspec.SliverType{
+				Name: "container",
+			},
 		})
 	}
 

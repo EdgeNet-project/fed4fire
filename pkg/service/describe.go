@@ -45,27 +45,32 @@ func (s *Service) Describe(r *http.Request, args *DescribeArgs, reply *DescribeR
 	returnRspec := rspec.Rspec{Type: rspec.RspecTypeManifest}
 
 	for _, sliver := range slivers {
-		hardwareType := rspec.HardwareType{}
-		logins := make([]rspec.Login, 0)
+		available := rspec.Available{Now: false}
+		var hardwareType *rspec.HardwareType
+		var services *rspec.Services
 		arch, host, port := s.GetSliverArchHostPort(r.Context(), sliver.Name)
 		if arch != nil && host != nil && port != nil {
-			logins = append(logins, rspec.Login{
-				Authentication: rspec.RspecLoginAuthenticationSSH,
-				Hostname:       *host,
-				Port:           *port,
-				Username:       "root",
-			})
+			available.Now = true
+			services = &rspec.Services{
+				Logins: []rspec.Login{{
+					Authentication: rspec.RspecLoginAuthenticationSSH,
+					Hostname:       *host,
+					Port:           *port,
+					Username:       "root",
+				}},
+			}
 		}
 		returnRspec.Nodes = append(returnRspec.Nodes, rspec.Node{
 			// TODO: Node component ID / name
 			ComponentManagerID: s.AuthorityIdentifier.URN(),
-			Available:          rspec.Available{Now: false},
 			ClientID:           sliver.Spec.ClientID,
 			SliverID:           sliver.Spec.URN,
+			Available:          &available,
 			Exclusive:          false,
 			HardwareType:       hardwareType,
-			Services: rspec.Services{
-				Logins: logins,
+			Services:           services,
+			SliverType: rspec.SliverType{
+				Name: "container",
 			},
 		})
 		allocationStatus, operationalStatus := s.GetSliverStatus(r.Context(), sliver.Name)

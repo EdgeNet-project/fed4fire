@@ -112,13 +112,13 @@ func rspecForNode(
 		ComponentID:        authorityIdentifier.Copy(identifiers.ResourceTypeNode, nodeName).URN(),
 		ComponentManagerID: authorityIdentifier.URN(),
 		ComponentName:      nodeName,
-		Available:          rspec.Available{Now: nodeIsReady},
-		Location: rspec.Location{
+		Available:          &rspec.Available{Now: nodeIsReady},
+		Location: &rspec.Location{
 			Country:   nodeCountry,
 			Latitude:  nodeLatitude,
 			Longitude: nodeLongitude,
 		},
-		HardwareType: rspec.HardwareType{
+		HardwareType: &rspec.HardwareType{
 			Name: nodeArch,
 		},
 		SliverType: rspec.SliverType{
